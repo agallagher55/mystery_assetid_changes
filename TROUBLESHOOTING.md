@@ -24,7 +24,7 @@
 - A very large number of features have been inserted and deleted (each insert increments the sequence even on rollback/deletion), OR
 - A batch operation fired the Insert rule en masse
 
-**GlobalID consideration:** If `GlobalID` is present on the feature class, it is also regenerated on every delete+insert. Any related tables or replica configurations that use `GlobalID` as a relationship key will also be affected. Confirm whether TRN_SECTRAV has a `GlobalID` column and whether anything joins to it.
+**GlobalID consideration:** `TRN_SECTRAV` **does have a `GlobalID` column** (confirmed). `GlobalID` is also regenerated on every delete+insert. Any related tables or replica configurations that use `GlobalID` as a relationship key will also be affected. Confirm whether any related tables join to `TRN_SECTRAV` on `GlobalID`.
 
 ### 1.2 Known Workflow
 
@@ -448,15 +448,17 @@ GROUP BY seq.current_value;
 
 Before starting remediation, confirm the following:
 
-1. **What exact tool/script is used to load consultant data back into the GDB?** (Append? Python script? Manual edit? Replica sync? FME?)
-2. **Was the sequence `sdeadm.sectravid` ever manually altered?** (Ask DBA, check default trace)
-3. **Do consultants edit in a named geodatabase version, or do they work on exported flat files only?**
-4. **Are there any scheduled tasks (Python scripts, FME workspaces, ETL jobs, SQL Agent jobs) that touch TRN_SECTRAV?**
-5. **Is TRN_SECTRAV registered as traditional versioned or branch versioned?**
-6. **Does TRN_SECTRAV have a `GlobalID` column? If so, are any related tables or replicas joining on it?**
-7. **Are Bus Pads and other affected layers using the same sequence (`sectravid`), or a different one?**
-8. **Is the ID mapping table (Kirk's list) exhaustive, or are there more affected features not yet identified?**
-9. **Are there any disconnected replicas (checkout/check-in) configured for TRN_SECTRAV or related layers?**
+| # | Question | Status |
+|---|----------|--------|
+| 1 | What exact tool/script is used to load consultant data back into the GDB? (Append? Python script? Manual edit? Replica sync? FME?) | **Open** |
+| 2 | Was the sequence `sdeadm.sectravid` ever manually altered? | **Confirmed: No** (DBA verified) |
+| 3 | Do consultants edit in a named geodatabase version, or do they work on exported flat files only? | **Open** |
+| 4 | Are there any scheduled tasks (Python scripts, FME workspaces, ETL jobs, SQL Agent jobs) that touch TRN_SECTRAV? | **Open** |
+| 5 | Is TRN_SECTRAV registered as traditional versioned or branch versioned? | **Open** |
+| 6 | Does TRN_SECTRAV have a `GlobalID` column? Are any related tables joining on it? | **Partial: GlobalID confirmed present. Related table usage unknown.** |
+| 7 | Are Bus Pads and other affected layers using the same sequence (`sectravid`), or a different one? | **Confirmed: Bus Pads use a separate sequence. Same ID-change symptoms observed.** |
+| 8 | Is the ID mapping table (Kirk's list) exhaustive, or are there more affected features not yet identified? | **Open** |
+| 9 | Are there any disconnected replicas (checkout/check-in) configured for TRN_SECTRAV or related layers? | **Open** |
 
 ---
 
