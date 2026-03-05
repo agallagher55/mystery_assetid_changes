@@ -2,7 +2,8 @@
 
 **Prepared:** 2026-03-05
 **Issue:** `TR_ID` and `ASSETID` fields are changing on existing features after consultant data is reconciled back into the enterprise geodatabase.
-**Database:** `[GISRW01].[sdeadm].[TRN_SECTRAV]` (archiving enabled)
+**Database:** `[GISRW01].[sdeadm].[TRN_SECTRAV]` (archiving enabled) — SQL Server enterprise geodatabase, read-write connection
+**GIS Client:** ArcGIS Pro 3.3.5
 **Also affected:** Bus pads and other layers using the same or similar attribute rules (see Section 11)
 
 ---
