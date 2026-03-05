@@ -26,8 +26,8 @@ The same problem has been observed on Bus Pads and potentially other layers.
 
 ### Technology Stack
 
-- **Database:** SQL Server enterprise geodatabase managed by Esri ArcGIS Enterprise (SDE)
-- **GIS Platform:** ArcGIS Pro / ArcGIS Enterprise
+- **GIS Client:** ArcGIS Pro 3.3.5
+- **Database:** SQL Server enterprise geodatabase (read-write connection), managed via Esri ArcGIS Enterprise (SDE)
 - **Feature Class:** `[GISRW01].[sdeadm].[TRN_SECTRAV]` — trail segments with archiving enabled
 - **Sequence:** `sdeadm.sectravid` — generates numeric portion of TR_ID values
 - **Attribute Rules:** Arcade-based, Insert-only, auto-generate `TR_ID` and `ASSETID`
@@ -67,7 +67,7 @@ The same problem has been observed on Bus Pads and potentially other layers.
 
 - All SQL in this repo targets **SQL Server** (T-SQL syntax).
 - Arcade expressions follow **ArcGIS Arcade** syntax (Esri's expression language).
-- Python scripts use **ArcPy** (ArcGIS Pro 3.x).
+- Python scripts use **ArcPy** (ArcGIS Pro 3.3.5).
 - When suggesting queries, use the table/schema names above exactly (`sdeadm.TRN_SECTRAV`, etc.).
 - Do not recommend truncate+reload or Append-based workflows for this feature class.
 - `OBJECTID` is NOT a stable join key across delete+insert cycles; prefer `TR_ID`, `GlobalID`, or spatial geometry.
