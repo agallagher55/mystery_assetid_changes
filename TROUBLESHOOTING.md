@@ -26,10 +26,9 @@
 
 **GlobalID consideration:** `TRN_SECTRAV` **does have a `GlobalID` column** (confirmed). `GlobalID` is also regenerated on every delete+insert. Any related tables or replica configurations that use `GlobalID` as a relationship key will also be affected.
 
-**Cityworks:** Inspection and work order records in **Cityworks** reference these trail features — likely via `ASSETID` (and possibly `TR_ID`). The Cityworks records becoming orphaned (i.e., referencing the old `TR1xxxxxx` IDs that no longer exist) is what originally surfaced this issue. The Cityworks team should be contacted to:
-- Confirm which field they use as the asset key (`ASSETID`, `TR_ID`, or `GlobalID`)
-- Identify how many Cityworks records reference the ~30+ affected features
-- Determine whether those records will need to be re-linked after ID remediation
+**Cityworks:** Inspection and work order records in **Cityworks** reference these trail features via **`ASSETID`** (confirmed). The Cityworks records became orphaned when `ASSETID` changed from `TR1xxxxxx` → `TR714xxxx`, which is what originally surfaced this issue.
+
+**Importantly:** Cityworks does NOT need to be updated directly. Restoring the original `ASSETID` values in `TRN_SECTRAV` (GIS database) will automatically re-link all Cityworks records, since Cityworks holds the old `TR1xxxxxx` IDs and will match again once the GIS side is corrected.
 
 ### 1.2 Known Workflow
 
@@ -364,22 +363,11 @@ This will throw an error if any workflow attempts to change TR_ID or ASSETID on 
 
 Once the root cause is confirmed and the workflow is corrected, use the ID mapping table (Original_ID → New_ID as documented by Kirk) to remediate data.
 
-### 8.1 Update Related Tables
+### 8.1 Cityworks Re-linking Strategy
 
-Any table that references `TR_ID` or `ASSETID` as a foreign key will need to be updated. **Cityworks inspection and work order records are the known affected system** — they reference the old `TR1xxxxxx` IDs that have since changed.
+**Cityworks joins on `ASSETID` (confirmed).** Cityworks records still hold the original `TR1xxxxxx` IDs. No changes are needed in Cityworks — restoring the original `ASSETID` values in `TRN_SECTRAV` (Section 8.2) will automatically re-link all orphaned Cityworks records.
 
-Contact the Cityworks team (or your Cityworks DBA) to identify the exact table(s) and join field, then apply an update using the mapping table:
-
-```sql
--- Example pattern — confirm actual Cityworks table/column names before running
--- This must be coordinated with the Cityworks team
-UPDATE cw_inspections
-SET ASSETID = map.new_id
-FROM id_mapping_table map
-WHERE cw_inspections.ASSETID = map.original_id;
-```
-
-> **Note:** Cityworks may store asset keys in its own SQL Server database (separate from the GIS database). Confirm whether the update needs to be applied in the GIS database, the Cityworks database, or both.
+After running the GIS-side remediation (Section 8.2), verify re-linkage by spot-checking a few known-affected assets in Cityworks to confirm their inspection history reappears.
 
 ### 8.2 Restore Original IDs if Possible
 
@@ -465,7 +453,7 @@ Before starting remediation, confirm the following:
 | 3 | Do consultants edit in a named geodatabase version, or do they work on exported flat files only? | **Open** |
 | 4 | Are there any scheduled tasks (Python scripts, FME workspaces, ETL jobs, SQL Agent jobs) that touch TRN_SECTRAV? | **Open** |
 | 5 | Is TRN_SECTRAV registered as traditional versioned or branch versioned? | **Open** |
-| 6 | Does TRN_SECTRAV have a `GlobalID` column? Are any related tables joining on it? | **Partial: GlobalID confirmed present. Cityworks inspection records are a known related system — join field (ASSETID vs GlobalID) to be confirmed with Cityworks team.** |
+| 6 | Does TRN_SECTRAV have a `GlobalID` column? Are any related tables joining on it? | **Confirmed: GlobalID present. Cityworks joins on `ASSETID` (not GlobalID). No Cityworks-side update needed — restoring ASSETID in GIS DB re-links automatically.** |
 | 7 | Are Bus Pads and other affected layers using the same sequence (`sectravid`), or a different one? | **Confirmed: Bus Pads use a separate sequence. Same ID-change symptoms observed.** |
 | 8 | Is the ID mapping table (Kirk's list) exhaustive, or are there more affected features not yet identified? | **Open** |
 | 9 | Are there any disconnected replicas (checkout/check-in) configured for TRN_SECTRAV or related layers? | **Open** |
