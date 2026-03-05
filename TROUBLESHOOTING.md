@@ -24,7 +24,12 @@
 - A very large number of features have been inserted and deleted (each insert increments the sequence even on rollback/deletion), OR
 - A batch operation fired the Insert rule en masse
 
-**GlobalID consideration:** `TRN_SECTRAV` **does have a `GlobalID` column** (confirmed). `GlobalID` is also regenerated on every delete+insert. Any related tables or replica configurations that use `GlobalID` as a relationship key will also be affected. Confirm whether any related tables join to `TRN_SECTRAV` on `GlobalID`.
+**GlobalID consideration:** `TRN_SECTRAV` **does have a `GlobalID` column** (confirmed). `GlobalID` is also regenerated on every delete+insert. Any related tables or replica configurations that use `GlobalID` as a relationship key will also be affected.
+
+**Cityworks:** Inspection and work order records in **Cityworks** reference these trail features — likely via `ASSETID` (and possibly `TR_ID`). The Cityworks records becoming orphaned (i.e., referencing the old `TR1xxxxxx` IDs that no longer exist) is what originally surfaced this issue. The Cityworks team should be contacted to:
+- Confirm which field they use as the asset key (`ASSETID`, `TR_ID`, or `GlobalID`)
+- Identify how many Cityworks records reference the ~30+ affected features
+- Determine whether those records will need to be re-linked after ID remediation
 
 ### 1.2 Known Workflow
 
@@ -361,15 +366,20 @@ Once the root cause is confirmed and the workflow is corrected, use the ID mappi
 
 ### 8.1 Update Related Tables
 
-Any table that references `TR_ID` or `ASSETID` as a foreign key will need to be updated:
+Any table that references `TR_ID` or `ASSETID` as a foreign key will need to be updated. **Cityworks inspection and work order records are the known affected system** — they reference the old `TR1xxxxxx` IDs that have since changed.
+
+Contact the Cityworks team (or your Cityworks DBA) to identify the exact table(s) and join field, then apply an update using the mapping table:
 
 ```sql
--- Example: update a related condition table
-UPDATE sdeadm.TRN_SECTRAV_CONDITION
+-- Example pattern — confirm actual Cityworks table/column names before running
+-- This must be coordinated with the Cityworks team
+UPDATE cw_inspections
 SET ASSETID = map.new_id
 FROM id_mapping_table map
-WHERE sdeadm.TRN_SECTRAV_CONDITION.ASSETID = map.original_id;
+WHERE cw_inspections.ASSETID = map.original_id;
 ```
+
+> **Note:** Cityworks may store asset keys in its own SQL Server database (separate from the GIS database). Confirm whether the update needs to be applied in the GIS database, the Cityworks database, or both.
 
 ### 8.2 Restore Original IDs if Possible
 
@@ -450,12 +460,12 @@ Before starting remediation, confirm the following:
 
 | # | Question | Status |
 |---|----------|--------|
-| 1 | What exact tool/script is used to load consultant data back into the GDB? (Append? Python script? Manual edit? Replica sync? FME?) | **Open** |
+| 1 | What exact tool/script is used to load consultant data back into the GDB? (Append? Python script? Manual edit? Replica sync? FME?) | **Open — email sent, awaiting response** |
 | 2 | Was the sequence `sdeadm.sectravid` ever manually altered? | **Confirmed: No** (DBA verified) |
 | 3 | Do consultants edit in a named geodatabase version, or do they work on exported flat files only? | **Open** |
 | 4 | Are there any scheduled tasks (Python scripts, FME workspaces, ETL jobs, SQL Agent jobs) that touch TRN_SECTRAV? | **Open** |
 | 5 | Is TRN_SECTRAV registered as traditional versioned or branch versioned? | **Open** |
-| 6 | Does TRN_SECTRAV have a `GlobalID` column? Are any related tables joining on it? | **Partial: GlobalID confirmed present. Related table usage unknown.** |
+| 6 | Does TRN_SECTRAV have a `GlobalID` column? Are any related tables joining on it? | **Partial: GlobalID confirmed present. Cityworks inspection records are a known related system — join field (ASSETID vs GlobalID) to be confirmed with Cityworks team.** |
 | 7 | Are Bus Pads and other affected layers using the same sequence (`sectravid`), or a different one? | **Confirmed: Bus Pads use a separate sequence. Same ID-change symptoms observed.** |
 | 8 | Is the ID mapping table (Kirk's list) exhaustive, or are there more affected features not yet identified? | **Open** |
 | 9 | Are there any disconnected replicas (checkout/check-in) configured for TRN_SECTRAV or related layers? | **Open** |
