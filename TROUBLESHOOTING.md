@@ -159,13 +159,23 @@ INSERT INTO #id_map VALUES
   ('TR7126644', 'TR7141895');
 
 -- Step 2: Find the deletion event for each original ID
-SELECT h.OBJECTID, h.TR_ID, h.ASSETID, h.gdb_from_date, h.gdb_to_date, h.gdb_is_delete
+-- In ArcGIS archiving there is no gdb_is_delete column.
+-- Deleted features are identified by being present in _H but absent from the live table.
+-- The row with the latest GDB_FROM_DATE for each TR_ID is the state at time of deletion.
+SELECT
+    h.OBJECTID,
+    h.TR_ID,
+    h.ASSETID,
+    h.GDB_FROM_DATE,
+    h.GDB_TO_DATE,
+    CASE WHEN live.TR_ID IS NULL THEN 'DELETED' ELSE 'STILL_EXISTS' END AS feature_status
 FROM sdeadm.TRN_SECTRAV_H h
+LEFT JOIN sdeadm.TRN_SECTRAV live ON h.TR_ID = live.TR_ID
 JOIN #id_map m ON h.TR_ID = m.original_id
-ORDER BY h.TR_ID, h.gdb_from_date;
+ORDER BY h.TR_ID, h.GDB_FROM_DATE;
 ```
 
-> **What to look for:** Rows where `gdb_is_delete = 1` confirm a deletion occurred. Compare the `gdb_to_date` of the deletion event with the `gdb_from_date` of the new ID — if they are identical timestamps, a simultaneous delete+insert operation (e.g., Append or script reload) is the cause.
+> **What to look for:** Rows where `feature_status = 'DELETED'` confirm the original feature was removed from the live table. The row with the latest `GDB_FROM_DATE` for each original `TR_ID` represents its state at the time of deletion. Compare that `GDB_TO_DATE` with the `GDB_FROM_DATE` of the corresponding new ID in the live table — if they are identical (or within seconds of each other), a simultaneous delete+insert operation (e.g., Append or script reload) is the cause.
 
 ### 2.4 Check for Duplicate Geometries with Different IDs
 
@@ -468,17 +478,22 @@ JOIN id_mapping_table map ON live.TR_ID = map.new_id;
 **Option B — Use the archive table and spatial coincidence (if mapping table is incomplete):**
 
 ```sql
--- Find archive rows with original IDs that spatially match current live features
+-- Find archive rows with original IDs that spatially match current live features.
+-- Deleted features are those present in _H but absent from the live table.
+-- We confirm deletion by checking the _H TR_ID does not exist in the live table.
 SELECT
     live.TR_ID          AS current_id,
     hist.TR_ID          AS original_id,
-    hist.gdb_to_date    AS deletion_date
+    hist.GDB_TO_DATE    AS deletion_date
 FROM sdeadm.TRN_SECTRAV live
 JOIN sdeadm.TRN_SECTRAV_H hist
   ON live.SHAPE.STEquals(hist.SHAPE) = 1
- AND hist.gdb_is_delete = 1
  AND hist.TR_ID LIKE 'TR1%'        -- original ID format
  AND live.TR_ID  LIKE 'TR7141%'    -- new ID format
+WHERE NOT EXISTS (
+    -- Confirm the original TR_ID is no longer in the live table (i.e. it was deleted)
+    SELECT 1 FROM sdeadm.TRN_SECTRAV lv2 WHERE lv2.TR_ID = hist.TR_ID
+)
 ORDER BY live.TR_ID;
 ```
 
