@@ -1,7 +1,9 @@
 # Troubleshooting Plan: Changing Asset IDs in `[GISRW01].[sdeadm].[TRN_SECTRAV]`
 
 **Prepared:** 2026-03-05
+**Updated:** 2026-03-06 — Root cause confirmed (see Section 2.3)
 **Issue:** `TR_ID` and `ASSETID` fields are changing on existing features after consultant data is reconciled back into the enterprise geodatabase.
+**Status: ROOT CAUSE CONFIRMED** — Consultant workflow used batch delete+insert (not in-place update) on 2026-01-08, triggering Insert-only attribute rules and assigning new IDs to 62 features.
 **Database:** `[GISRW01].[sdeadm].[TRN_SECTRAV]` (archiving enabled) — SQL Server enterprise geodatabase, read-write connection
 **GIS Client:** ArcGIS Pro 3.3.5
 **Also affected:** Bus pads and other layers using the same or similar attribute rules (see Section 11)
@@ -222,12 +224,24 @@ ORDER BY TR_ID, GDB_FROM_DATE;
 
 > If `GDB_FROM_DATE = 2026-01-08 14:59:41.0000000` on the TR7141xxx rows, the root cause is **confirmed**: a single batch delete+insert operation on January 8, 2026 deleted the original 62 features and re-inserted them with new IDs, triggering the Insert-only attribute rules.
 
+#### Follow-up findings (2026-03-06) — ROOT CAUSE CONFIRMED ✅
+
+Query returned 67 rows (TR7141856–TR7141922), every one with:
+
+- `GDB_FROM_DATE = 2026-01-08 14:59:41.0000000`
+- `GDB_TO_DATE = 9999-12-31 00:00:00.0000000` (still live in the database)
+
+**The deletion timestamp of the original features and the insertion timestamp of the replacement features are identical to the second.** This proves the delete and insert occurred in the same database transaction — a single bulk operation.
+
+**Root cause confirmed:** On **2026-01-08 at 14:59:41**, the consultant's submission workflow performed a **batch delete+insert** (most likely via ArcGIS Pro `Append` tool with `TRUNCATE_APPEND` or a script-based full reload) rather than in-place attribute updates. This caused ArcGIS's Insert-only attribute rules to fire on every re-inserted row, consuming new values from the `sdeadm.sectravid` sequence and assigning new `TR_ID` / `ASSETID` values (TR7141856–TR7141922) instead of preserving the original IDs (TR1xxxxxx range).
+
 **Action items generated from this step:**
 
 - ✅ 62 original features confirmed deleted from the archive on `2026-01-08 14:59:41` — bulk batch delete confirmed.
 - ✅ Deletion was a single event (shared exact timestamp), not piecemeal edits.
+- ✅ 67 replacement features (TR7141856–TR7141922) confirmed inserted at the exact same timestamp — simultaneous delete+insert proven.
+- ✅ **Root cause confirmed.** Proceed to Section 3 (Remediation).
 - TR1001368 — investigate separately; may be a false positive in Kirk's mapping list.
-- Run the follow-up archive query (above) on the TR7141856–TR7141922 range to confirm `GDB_FROM_DATE` matches and close root cause confirmation.
 
 ### 2.4 Check for Duplicate Geometries with Different IDs
 
