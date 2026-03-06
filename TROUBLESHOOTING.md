@@ -1,7 +1,9 @@
 # Troubleshooting Plan: Changing Asset IDs in `[GISRW01].[sdeadm].[TRN_SECTRAV]`
 
 **Prepared:** 2026-03-05
+**Updated:** 2026-03-06 — Root cause confirmed (see Section 2.3)
 **Issue:** `TR_ID` and `ASSETID` fields are changing on existing features after consultant data is reconciled back into the enterprise geodatabase.
+**Status: ROOT CAUSE CONFIRMED** — Consultant workflow used batch delete+insert (not in-place update) on 2026-01-08, triggering Insert-only attribute rules and assigning new IDs to 62 features.
 **Database:** `[GISRW01].[sdeadm].[TRN_SECTRAV]` (archiving enabled) — SQL Server enterprise geodatabase, read-write connection
 **GIS Client:** ArcGIS Pro 3.3.5
 **Also affected:** Bus pads and other layers using the same or similar attribute rules (see Section 11)

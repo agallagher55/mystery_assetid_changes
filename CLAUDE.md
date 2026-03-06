@@ -57,9 +57,9 @@ The same problem has been observed on Bus Pads and potentially other layers.
 
 ## Investigation Status
 
-- **Root cause hypothesis:** Consultant reconciliation workflow is performing delete+insert (e.g., via `Append` tool or full reload) rather than in-place updates, causing Insert-only attribute rules to fire and assign new IDs.
-- **Evidence:** ID gap of ~6 million sequence increments; archive table shows deletions; known mapping of 30+ affected features.
-- **Status:** Active investigation — root cause not yet confirmed. See `TROUBLESHOOTING.md` for next steps.
+- **Root cause confirmed (2026-03-06):** On 2026-01-08 at 14:59:41, the consultant's submission workflow performed a batch delete+insert (Append tool with truncate, or equivalent full reload) rather than in-place updates. This caused Insert-only attribute rules to fire on all re-inserted rows, assigning new `TR_ID` / `ASSETID` values (TR7141856–TR7141922) instead of preserving originals.
+- **Evidence:** Archive table shows 62 features deleted and 67 features inserted at the exact same timestamp (`2026-01-08 14:59:41`), proving a single atomic delete+insert transaction.
+- **Status: REMEDIATION PHASE** — Root cause confirmed. See `TROUBLESHOOTING.md` Section 3 for remediation steps.
 
 ---
 
