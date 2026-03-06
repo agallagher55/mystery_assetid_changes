@@ -123,7 +123,26 @@ SELECT COUNT(*) AS live_count FROM sdeadm.TRN_SECTRAV;
 SELECT COUNT(*) AS archive_count FROM sdeadm.TRN_SECTRAV_H;
 ```
 
-> **What to look for:** A disproportionately large archive table compared to the live table suggests many features have been deleted and re-inserted over time.
+**Results (2026-03-06):**
+
+| Metric | Count |
+|--------|-------|
+| Live features (`TRN_SECTRAV`) | **49,217** |
+| Archive rows (`TRN_SECTRAV_H`) | **167,085** |
+| Archive-to-live ratio | **~3.4 : 1** |
+
+> **Note:** The earlier CSV export (Section 1.1) showed 49,719 live features; the live table now shows 49,217 — a difference of 502, reflecting normal editing activity since the export was taken.
+
+**Interpretation:**
+
+The archive table is 3.4× the size of the live table. ArcGIS archiving records a new `_H` row for every state transition — both updates *and* deletes. For a relatively stable trail network, this ratio is elevated. While some archive growth is expected from years of normal editing, a large batch delete+re-insert event (e.g., the consultant's `Append`-based reload) would produce a sudden spike in archive rows: one deletion record for every removed feature, followed by new inserts.
+
+This result is consistent with the delete+re-insert hypothesis but is not on its own conclusive — the next step (Section 2.3) will look for the actual deletion events tied to the known affected `TR_ID` values.
+
+**Action items generated from this step:**
+
+- ✅ Disproportionate archive-to-live ratio confirmed — consistent with large-batch delete+re-insert events.
+- Proceed to **Section 2.3** to find the specific deletion events for the known affected features.
 
 ### 2.3 Find Features with Changed IDs Using the Archive
 
