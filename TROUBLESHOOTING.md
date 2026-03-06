@@ -177,6 +177,58 @@ ORDER BY h.TR_ID, h.GDB_FROM_DATE;
 
 > **What to look for:** Rows where `feature_status = 'DELETED'` confirm the original feature was removed from the live table. The row with the latest `GDB_FROM_DATE` for each original `TR_ID` represents its state at the time of deletion. Compare that `GDB_TO_DATE` with the `GDB_FROM_DATE` of the corresponding new ID in the live table — if they are identical (or within seconds of each other), a simultaneous delete+insert operation (e.g., Append or script reload) is the cause.
 
+#### 2.3 Findings (2026-03-06) — COMPLETE
+
+Query run using the full 64-ID original list against `TRN_SECTRAV_H` (physical archive table, not `_evw`).
+
+**Deletion event confirmed — 2026-01-08 14:59:41**
+
+62 of 63 queried features show `GDB_TO_DATE = 2026-01-08 14:59:41.0000000` — a shared, exact timestamp indicating a **single bulk delete operation** on January 8, 2026.
+
+**TR1001368 anomaly:** This feature shows `feature_status = STILL_EXISTS` with two archive rows (2024-11-30 and 2025-05-08 states, `GDB_TO_DATE = 9999-12-31`). It was NOT deleted. Either it was not affected by the January 8 operation, or it is a false entry in Kirk's mapping list. Needs follow-up.
+
+**Intermediate archive rows:** Several features have multiple archive rows with state transitions prior to the January 8 deletion, showing earlier update events:
+
+| Intermediate timestamp | Features affected |
+|------------------------|-------------------|
+| 2025-05-08 11:38:57 | TR1000429, TR1001368 |
+| 2025-07-10 08:37:05 | TR7126644 |
+| 2025-10-08 14:21:50 | TR1000429 |
+| 2025-11-17 15:39:49 | TR1000779, TR1000851, TR1100457, TR1100595, TR1100824, TR1101113, TR1103884 |
+
+These represent prior edits/updates to those features — not separate deletion events. All were ultimately sealed by the January 8 deletion.
+
+**Summary table:**
+
+| Metric | Value |
+|--------|-------|
+| Features confirmed DELETED | 62 of 63 |
+| Shared deletion timestamp | `2026-01-08 14:59:41.0000000` |
+| Feature not deleted (anomaly) | TR1001368 |
+| Features with prior edit history | 9 |
+
+**Next step — confirm simultaneous delete+insert:**
+
+Run the following query to check whether the TR7141856–TR7141922 replacement features were created at the same timestamp as the deletion:
+
+```sql
+-- Do the replacement features' GDB_FROM_DATE match the deletion timestamp 2026-01-08 14:59:41?
+-- If yes, the delete+insert was simultaneous — a single batch operation.
+SELECT TR_ID, GDB_FROM_DATE, GDB_TO_DATE
+FROM sdeadm.TRN_SECTRAV_H
+WHERE TR_ID BETWEEN 'TR7141856' AND 'TR7141922'
+ORDER BY TR_ID, GDB_FROM_DATE;
+```
+
+> If `GDB_FROM_DATE = 2026-01-08 14:59:41.0000000` on the TR7141xxx rows, the root cause is **confirmed**: a single batch delete+insert operation on January 8, 2026 deleted the original 62 features and re-inserted them with new IDs, triggering the Insert-only attribute rules.
+
+**Action items generated from this step:**
+
+- ✅ 62 original features confirmed deleted from the archive on `2026-01-08 14:59:41` — bulk batch delete confirmed.
+- ✅ Deletion was a single event (shared exact timestamp), not piecemeal edits.
+- TR1001368 — investigate separately; may be a false positive in Kirk's mapping list.
+- Run the follow-up archive query (above) on the TR7141856–TR7141922 range to confirm `GDB_FROM_DATE` matches and close root cause confirmation.
+
 ### 2.4 Check for Duplicate Geometries with Different IDs
 
 > **Performance note:** This is a spatial self-join and can be slow on large feature classes. Run during off-hours or add a `TABLESAMPLE` clause, or limit to the bounding box of your known affected features first.
