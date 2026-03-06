@@ -123,7 +123,26 @@ SELECT COUNT(*) AS live_count FROM sdeadm.TRN_SECTRAV;
 SELECT COUNT(*) AS archive_count FROM sdeadm.TRN_SECTRAV_H;
 ```
 
-> **What to look for:** A disproportionately large archive table compared to the live table suggests many features have been deleted and re-inserted over time.
+**Results (2026-03-06):**
+
+| Metric | Count |
+|--------|-------|
+| Live features (`TRN_SECTRAV`) | **49,217** |
+| Archive rows (`TRN_SECTRAV_H`) | **167,085** |
+| Archive-to-live ratio | **~3.4 : 1** |
+
+> **Note:** The earlier CSV export (Section 1.1) showed 49,719 live features; the live table now shows 49,217 — a difference of 502, reflecting normal editing activity since the export was taken.
+
+**Interpretation:**
+
+The archive table is 3.4× the size of the live table. ArcGIS archiving records a new `_H` row for every state transition — both updates *and* deletes. For a relatively stable trail network, this ratio is elevated. While some archive growth is expected from years of normal editing, a large batch delete+re-insert event (e.g., the consultant's `Append`-based reload) would produce a sudden spike in archive rows: one deletion record for every removed feature, followed by new inserts.
+
+This result is consistent with the delete+re-insert hypothesis but is not on its own conclusive — the next step (Section 2.3) will look for the actual deletion events tied to the known affected `TR_ID` values.
+
+**Action items generated from this step:**
+
+- ✅ Disproportionate archive-to-live ratio confirmed — consistent with large-batch delete+re-insert events.
+- Proceed to **Section 2.3** to find the specific deletion events for the known affected features.
 
 ### 2.3 Find Features with Changed IDs Using the Archive
 
@@ -140,13 +159,110 @@ INSERT INTO #id_map VALUES
   ('TR7126644', 'TR7141895');
 
 -- Step 2: Find the deletion event for each original ID
-SELECT h.OBJECTID, h.TR_ID, h.ASSETID, h.gdb_from_date, h.gdb_to_date, h.gdb_is_delete
+-- In ArcGIS archiving there is no gdb_is_delete column.
+-- Deleted features are identified by being present in _H but absent from the live table.
+-- The row with the latest GDB_FROM_DATE for each TR_ID is the state at time of deletion.
+SELECT
+    h.OBJECTID,
+    h.TR_ID,
+    h.ASSETID,
+    h.GDB_FROM_DATE,
+    h.GDB_TO_DATE,
+    CASE WHEN live.TR_ID IS NULL THEN 'DELETED' ELSE 'STILL_EXISTS' END AS feature_status
 FROM sdeadm.TRN_SECTRAV_H h
+LEFT JOIN sdeadm.TRN_SECTRAV live ON h.TR_ID = live.TR_ID
 JOIN #id_map m ON h.TR_ID = m.original_id
-ORDER BY h.TR_ID, h.gdb_from_date;
+ORDER BY h.TR_ID, h.GDB_FROM_DATE;
 ```
 
-> **What to look for:** Rows where `gdb_is_delete = 1` confirm a deletion occurred. Compare the `gdb_to_date` of the deletion event with the `gdb_from_date` of the new ID — if they are identical timestamps, a simultaneous delete+insert operation (e.g., Append or script reload) is the cause.
+> **What to look for:** Rows where `feature_status = 'DELETED'` confirm the original feature was removed from the live table. The row with the latest `GDB_FROM_DATE` for each original `TR_ID` represents its state at the time of deletion. Compare that `GDB_TO_DATE` with the `GDB_FROM_DATE` of the corresponding new ID in the live table — if they are identical (or within seconds of each other), a simultaneous delete+insert operation (e.g., Append or script reload) is the cause.
+
+### 2.3 Spatial Duplicate Confirmation — Findings (2026-03-06) — COMPLETE
+
+Two queries were run to confirm that the TR7141856–TR7141922 IDs represent spatial twins of the original TR1xxxxxx features.
+
+**Query 1 — Spatial duplicate confirmation (WHERE original TR_IDs; JOIN on b.TR_ID BETWEEN 'TR7141856' AND 'TR7141922'):**
+
+> **Result: 0 rows**
+
+**Query 2 — Snapshot of all TR7141856–TR7141922 features in the live table:**
+
+> **Result: 0 rows**
+
+**Interpretation:**
+
+The TR7141856–TR7141922 ID range is **completely absent from the live Default table**, even though the sequence has advanced to TR7142059 and ~558 post-seed features exist in other ranges. This means the IDs in that specific window were consumed by the sequence but never settled in Default, or were created and subsequently deleted.
+
+Three scenarios remain possible:
+
+| Scenario | What it means |
+|----------|--------------|
+| New IDs never reached Default (in an open version) | The consultant's edits are stranded in a child version — original IDs safe in Default |
+| New IDs reached Default but were deleted after the fact | Someone removed the wrong-ID features; originals already gone — possible net loss |
+| Different database/state produced the mapping table | Kirk's list reflects a non-Default version or staging DB, not the live Default |
+
+**The most important immediate check is whether Kirk's original IDs still exist in the live Default table** — see Q-A below.
+
+#### Next Diagnostic Queries (run in this order)
+
+```sql
+-- ── Q-A ─────────────────────────────────────────────────────────────────
+-- How many of Kirk's original IDs still exist in the live Default table?
+-- All 64 present → delete+insert never reached Default (look in open versions, Q-C).
+-- Some/all missing → originals deleted from Default.
+SELECT COUNT(*) AS original_ids_still_live
+FROM sdeadm.TRN_SECTRAV
+WHERE TR_ID IN (
+    'TR000071','TR1000429','TR1000779','TR1000851','TR1001088',
+    'TR1001095','TR1001096','TR1001103','TR1001130','TR1001137',
+    'TR1001138','TR1001139','TR1001145','TR1001147','TR1001282',
+    'TR1001305','TR1001339','TR1001360','TR1001860','TR1001992',
+    'TR1002086','TR1002185','TR1003725','TR1006209','TR1100044',
+    'TR1100379','TR1100457','TR1100536','TR1100595','TR1100776',
+    'TR1100824','TR1101113','TR1101669','TR1102143','TR1102144',
+    'TR1102344','TR1102402','TR1102810','TR1102905','TR1103126',
+    'TR1103352','TR1103884','TR1103903','TR3001196','TR3001197',
+    'TR3001198','TR3001212','TR3001220','TR3001259','TR3001262',
+    'TR5000206','TR5000224','TR5000266','TR5000300','TR6000070',
+    'TR6000120','TR6000121','TR7000274','TR7000491','TR7100213',
+    'TR7108790','TR7126641','TR7126642','TR7126644'
+);
+
+-- ── Q-B ─────────────────────────────────────────────────────────────────
+-- Do any TR7141856–TR7141922 IDs exist in the ARCHIVE (_H)?
+-- YES → they were posted to Default then deleted (look for who/when).
+-- NO  → they never reached Default (still in a version, or rolled back entirely).
+SELECT COUNT(*) AS new_ids_in_archive
+FROM sdeadm.TRN_SECTRAV_H
+WHERE TR_ID BETWEEN 'TR7141856' AND 'TR7141922';
+
+-- ── Q-C ─────────────────────────────────────────────────────────────────
+-- List all open named versions — TR7141xxx features may be stranded in one.
+SELECT version_name, owner, creation_time, modified_time, parent_name
+FROM sde.SDE_VERSIONS
+ORDER BY modified_time DESC;
+
+-- ── Q-D ─────────────────────────────────────────────────────────────────
+-- What TR_IDs are actually present in the post-seed range?
+-- Confirms which TR714xxxx IDs exist, and exposes any gaps.
+SELECT
+    MIN(TR_ID) AS min_post_seed_id,
+    MAX(TR_ID) AS max_post_seed_id,
+    COUNT(*)   AS count_post_seed
+FROM sdeadm.TRN_SECTRAV
+WHERE TR_ID >= 'TR7141300';
+```
+
+**Decision matrix — act on Q-A and Q-B results together:**
+
+| Q-A (originals in live) | Q-B (new IDs in archive) | Meaning & next step |
+|---|---|---|
+| 64 / 64 | 0 | Originals safe. New IDs never reached Default. Check Q-C for open versions. |
+| 64 / 64 | >0 | Originals safe. New IDs were created, then deleted from Default. Check who/when. |
+| < 64 | 0 | Some originals gone from Default. New IDs never posted — possible net loss of features. |
+| < 64 | >0 | Some originals gone. New IDs were posted then deleted — confirm net loss vs. recovery. |
+
+---
 
 ### 2.4 Check for Duplicate Geometries with Different IDs
 
@@ -449,17 +565,22 @@ JOIN id_mapping_table map ON live.TR_ID = map.new_id;
 **Option B — Use the archive table and spatial coincidence (if mapping table is incomplete):**
 
 ```sql
--- Find archive rows with original IDs that spatially match current live features
+-- Find archive rows with original IDs that spatially match current live features.
+-- Deleted features are those present in _H but absent from the live table.
+-- We confirm deletion by checking the _H TR_ID does not exist in the live table.
 SELECT
     live.TR_ID          AS current_id,
     hist.TR_ID          AS original_id,
-    hist.gdb_to_date    AS deletion_date
+    hist.GDB_TO_DATE    AS deletion_date
 FROM sdeadm.TRN_SECTRAV live
 JOIN sdeadm.TRN_SECTRAV_H hist
   ON live.SHAPE.STEquals(hist.SHAPE) = 1
- AND hist.gdb_is_delete = 1
  AND hist.TR_ID LIKE 'TR1%'        -- original ID format
  AND live.TR_ID  LIKE 'TR7141%'    -- new ID format
+WHERE NOT EXISTS (
+    -- Confirm the original TR_ID is no longer in the live table (i.e. it was deleted)
+    SELECT 1 FROM sdeadm.TRN_SECTRAV lv2 WHERE lv2.TR_ID = hist.TR_ID
+)
 ORDER BY live.TR_ID;
 ```
 
