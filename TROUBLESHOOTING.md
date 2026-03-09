@@ -1,7 +1,7 @@
 # Troubleshooting Plan: Changing Asset IDs in `[GISRW01].[sdeadm].[TRN_SECTRAV]`
 
 **Prepared:** 2026-03-05
-**Updated:** 2026-03-06 — Root cause confirmed (see Section 2.3)
+**Updated:** 2026-03-09 — Kirk's Eagle Walkway Mups QC findings added (Section 12)
 **Issue:** `TR_ID` and `ASSETID` fields are changing on existing features after consultant data is reconciled back into the enterprise geodatabase.
 **Status: ROOT CAUSE CONFIRMED** — Consultant workflow used batch delete+insert (not in-place update) on 2026-01-08, triggering Insert-only attribute rules and assigning new IDs to 62 features.
 **Database:** `[GISRW01].[sdeadm].[TRN_SECTRAV]` (archiving enabled) — SQL Server enterprise geodatabase, read-write connection
@@ -699,6 +699,218 @@ Apply the same diagnostic and remediation steps from this document to each affec
 
 ---
 
+---
+
+## 12. Kirk's QC Review — Eagle Walkway Mups Submission (2026-02-27)
+
+**Source document:** `QC11b_EagleWalkwayMups` — Kirk's QC review of the Eagle consultant submission dated 2026-02-27.
+**Received:** 2026-03-09
+**Two checks flagged:**
+
+| Check | Issue Type | Records Flagged |
+|-------|-----------|----------------|
+| CHK01 | TR_ID discrepancies (HRM reference vs. TRN_SECTRAV current value) | 34 |
+| CHK03 | SURF_MAT discrepancies (Eagle submitted value vs. HRM current value) | 63 |
+
+---
+
+### 12.1 CHK01 — TR_ID Discrepancies (34 records)
+
+**Summary:** 33 of the 34 flagged records follow the known pattern from the confirmed 2026-01-08 batch delete+insert event — original IDs in the TR1xxxxxx / TR3xxxxxx / TR5xxxxxx / TR7100xxxxx range were replaced with new IDs in the TR7141xxx range. One record is anomalous and requires separate investigation.
+
+**Full mapping — CHK01:**
+
+| Original TR_ID (HRM reference) | Current TR_ID (TRN_SECTRAV) | Notes |
+|---|---|---|
+| TR1001088 | TR7141890 | Matches 2026-01-08 batch event |
+| TR1001095 | TR7141892 | Matches 2026-01-08 batch event |
+| TR1001096 | TR7141876 | Matches 2026-01-08 batch event |
+| TR1001103 | TR7141862 | Matches 2026-01-08 batch event |
+| TR1001130 | TR7141867 | Matches 2026-01-08 batch event |
+| TR1001137 | TR7141871 | Matches 2026-01-08 batch event |
+| TR1001138 | TR7141870 | Matches 2026-01-08 batch event |
+| TR1001139 | TR7141873 | Matches 2026-01-08 batch event |
+| TR1001145 | TR7141886 | Matches 2026-01-08 batch event |
+| TR1001147 | TR7141869 | Matches 2026-01-08 batch event |
+| TR1001282 | TR7141884 | Matches 2026-01-08 batch event |
+| TR1001305 | TR7141874 | Matches 2026-01-08 batch event |
+| TR1001360 | TR7141861 | Matches 2026-01-08 batch event |
+| TR1006209 | TR7141872 | Matches 2026-01-08 batch event |
+| TR1100536 | TR7141915 | Matches 2026-01-08 batch event |
+| **TR1100774** | **TR1101360** | **ANOMALY — new ID is NOT in TR7141xxx range; requires separate investigation (see below)** |
+| TR1100776 | TR7141866 | Matches 2026-01-08 batch event |
+| TR1102143 | TR7141878 | Matches 2026-01-08 batch event |
+| TR1102144 | TR7141879 | Matches 2026-01-08 batch event |
+| TR1102344 | TR7141887 | Matches 2026-01-08 batch event |
+| TR1103352 | TR7141885 | Matches 2026-01-08 batch event |
+| TR1103903 | TR7141889 | Matches 2026-01-08 batch event |
+| TR3001197 | TR7141868 | Matches 2026-01-08 batch event |
+| TR3001198 | TR7141882 | Matches 2026-01-08 batch event |
+| TR3001212 | TR7141864 | Matches 2026-01-08 batch event |
+| TR3001259 | TR7141891 | Matches 2026-01-08 batch event |
+| TR3001262 | TR7141883 | Matches 2026-01-08 batch event |
+| TR5000224 | TR7141859 | Matches 2026-01-08 batch event |
+| TR5000300 | TR7141858 | Matches 2026-01-08 batch event |
+| TR7100213 | TR7141888 | Matches 2026-01-08 batch event |
+| TR7108790 | TR7141893 | Matches 2026-01-08 batch event |
+| TR7126641 | TR7141894 | Matches 2026-01-08 batch event |
+| TR7126642 | TR7141895 | Matches 2026-01-08 batch event |
+| TR7126644 | TR7141896 | Matches 2026-01-08 batch event |
+
+> **Note on existing mapping table:** The Section 2.3 query template previously referenced `('TR7126644', 'TR7141895')` as a placeholder example. Kirk's QC review provides the authoritative mapping: TR7126642 → TR7141895 and TR7126644 → TR7141896. Use Kirk's CHK01 table above for all remediation work.
+
+#### TR1100774 → TR1101360 Anomaly
+
+This pair does not fit the 2026-01-08 batch event:
+- The new ID `TR1101360` is in the `TR110xxxx` range — a pre-migration Oracle-sequence range — not in the `TR7141xxx` post-migration SQL Server range.
+- This suggests either: (a) a separate, earlier delete+insert event occurred for this feature; or (b) a manual ID edit was performed at some point.
+
+**Action required before remediation:** Run the following query to check the archive history for TR1100774:
+
+```sql
+-- Full archive history for TR1100774
+SELECT TR_ID, ASSETID, GDB_FROM_DATE, GDB_TO_DATE, OBJECTID
+FROM sdeadm.TRN_SECTRAV_H
+WHERE TR_ID IN ('TR1100774', 'TR1101360')
+ORDER BY GDB_FROM_DATE;
+
+-- Confirm TR1100774 is absent from live table
+SELECT COUNT(*) AS still_live FROM sdeadm.TRN_SECTRAV WHERE TR_ID = 'TR1100774';
+SELECT COUNT(*) AS still_live FROM sdeadm.TRN_SECTRAV WHERE TR_ID = 'TR1101360';
+```
+
+Confirm spatial coincidence between the two features (if TR1101360 exists in live table) before including this pair in the CHK01 remediation script.
+
+---
+
+### 12.2 CHK03 — SURF_MAT Discrepancies (63 records)
+
+**Summary:** Kirk's QC identifies 63 trail segments where Eagle's submitted `SURF_MAT` (surface material) value differs from what HRM currently holds in `TRN_SECTRAV`. These are independent of the TR_ID issue but must be reviewed before any batch attribute update is applied.
+
+**Important cross-reference:** Six records in CHK03 carry current `TR_ID` values in the TR7141xxx range — meaning they are the same features identified in CHK01 whose IDs need to be restored. SURF_MAT corrections for these six should be applied *after* (or simultaneously with) the TR_ID remediation, using the restored original ID as the join key.
+
+| Current TR_ID in CHK03 | Original TR_ID (per CHK01) | Location |
+|---|---|---|
+| TR7141884 | TR1001282 | 100 BAYVIEW RD TO 24 PARMBELLE LANE |
+| TR7141885 | TR1103352 | 9 GOLF LINKS RD TO 30 TRAFALGAR CT |
+| TR7141864 | TR3001212 | 31 ROCKHAVEN DR TO 11 FALCON PL |
+| TR7141882 | TR3001198 | 26 PEREGRINE CRES TO 9 EAGLE PL |
+| TR7141896 | TR7126644 | BRISTOLTON AVE TO HELEN CREIGHTON CRT |
+| TR7141915 | TR1100536 | *(location not provided in CHK03 for this ID)* |
+
+> TR7141915 does not appear in CHK03 but IS in CHK01 — no SURF_MAT flag was raised for it in this submission.
+
+**Full discrepancy list — CHK03 (sorted by Eagle value → HRM value):**
+
+| TR_ID | Eagle SURF_MAT | HRM SURF_MAT | Location |
+|---|---|---|---|
+| TR1005263 | Asphalt | Concrete | DUNBRACK ST |
+| TR7100873 | Asphalt | Concrete | 45 KNIGHTSRIDGE DR |
+| TR7100874 | Asphalt | Concrete | 45 KNIGHTSRIDGE DR |
+| TR7101260 | Asphalt | Concrete | CORONATION AVE TO DUNBRACK ST |
+| TR1001094 | Asphalt | Crusher Dust | RIDGEVALE DR (PARK) TO LISTER DR |
+| TR1001759 | Asphalt | Crusher Dust | LANSHAW CL TO PARK WEST SCHOOL PARK |
+| TR1100963 | Asphalt | Crusher Dust | FR WESTRIDGE DR TO MAINLAND COMMONS |
+| TR1102146 | Asphalt | Crusher Dust | RIDGEVALE DR (PARK) TO LISTER DR |
+| TR1102403 | Asphalt | Crusher Dust | 13 DOYLE CT TO LEBRUN CENTRE |
+| TR1102564 | Asphalt | Crusher Dust | 35 ESSEX LN TO 19 STOCKLEIGH PL |
+| TR7101105 | Asphalt | Crusher Dust | FR WESTRIDGE DR TO MAINLAND COMMONS |
+| TR7101106 | Asphalt | Crusher Dust | FR WESTRIDGE DR TO MAINLAND COMMONS |
+| **TR7141884** | **Asphalt** | **Crusher Dust** | **100 BAYVIEW RD TO 24 PARMBELLE LANE** *(original: TR1001282)* |
+| TR1001217 | Asphalt | Gravel | 105 MILLRUN CRES TO LAKE DR |
+| TR1100010 | Asphalt | Gravel | 150 WATERFRONT DR |
+| TR1100856 | Asphalt | Gravel | MAINLAND NORTH LINEAR PARKWAY |
+| TR1101081 | Asphalt | Gravel | LINEAR TRAIL FR WASHMILL LAKE DR ALONG NORTH WEST ARM DR |
+| TR1103553 | Asphalt | Gravel | WESTRIDGE DR TO LACEWOOD DR |
+| TR5000343 | Asphalt | Gravel | MAINLAND NORTH LINEAR PARKWAY |
+| TR5000352 | Asphalt | Gravel | MAINLAND NORTH LINEAR PARKWAY |
+| TR7000303 | Asphalt | Gravel | 150 WATERFRONT DR |
+| TR1100008 | Brick | Concrete | 150 WATERFRONT DR |
+| TR1102744 | Brick | Concrete | 150 WATERFRONT DR |
+| TR1103139 | Brick | Concrete | 150 WATERFRONT DR |
+| TR1103852 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7000306 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7000309 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7000314 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7118997 | Brick | Concrete | FROM DEWOLF PARK AROUND MILL COVE |
+| TR7119025 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119034 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119116 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119179 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119253 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119255 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119258 | Brick | Concrete | 1355 BEDFORD HWY |
+| TR7119267 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119278 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119301 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119332 | Brick | Concrete | 150 WATERFRONT DR |
+| TR7119279 | Brick | Wood | 150 WATERFRONT DR |
+| TR1102259 | Concrete | Gravel | PARKLAND DR TO FARNHAM GATE RD |
+| TR7100458 | Crusher Dust | Asphalt | 71 WEYBRIDGE LANE TO AMESBURY GATE COMMUNITY PARK |
+| **TR7141896** | **Crusher Dust** | **Asphalt** | **BRISTOLTON AVE TO HELEN CREIGHTON CRT** *(original: TR7126644)* |
+| TR1101042 | Crusher Dust | Concrete | 29 WINDROCK DR TO PARK |
+| TR7118961 | Crusher Dust | Natural | SACKVILLE RIVER WALKWAY |
+| **TR7141885** | **Crusher Dust** | **Natural** | **9 GOLF LINKS RD TO 30 TRAFALGAR CT** *(original: TR1103352)* |
+| TR1001102 | Gravel | Asphalt | BEDFORD HWY TO FIRST AVE |
+| TR1100020 | Gravel | Asphalt | 115 CLAYTON PARK DR |
+| TR1103263 | Gravel | Asphalt | 1441 BEDFORD HWY TO FISH HATCHERY PK |
+| TR7100784 | Gravel | Asphalt | 44 VIMY AVE TO EVANS AVE (TITUS SMITH PARK) |
+| TR7100785 | Gravel | Asphalt | 44 VIMY AVE TO EVANS AVE (TITUS SMITH PARK) |
+| TR1001106 | Gravel | Crusher Dust | 74 SHOREVIEW DR TO 67 MEADOWBROOK DR |
+| TR1100021 | Gravel | Crusher Dust | 115 CLAYTON PARK DR |
+| TR1100046 | Gravel | Crusher Dust | 191 TRANSOM DR |
+| TR1101044 | Gravel | Crusher Dust | LINCOLN CROSS PARK |
+| TR1103174 | Gravel | Crusher Dust | 105 MILLRUN CRES TO LAKE DR |
+| TR3001257 | Gravel | Crusher Dust | 44 BIRKDALE CRES |
+| TR5000287 | Gravel | Crusher Dust | 115 CLAYTON PARK DR |
+| **TR7141864** | **Gravel** | **Crusher Dust** | **31 ROCKHAVEN DR TO 11 FALCON PL** *(original: TR3001212)* |
+| **TR7141882** | **Gravel** | **Natural** | **26 PEREGRINE CRES TO 9 EAGLE PL** *(original: TR3001198)* |
+| TR7100959 | Paver Stones | Concrete | 15 FORT SACKVILLE RD |
+| TR7101006 | Wood | Concrete | 9 SPRING ST |
+
+**SURF_MAT discrepancy summary by type:**
+
+| Eagle Value | HRM Value | Count | Notable Pattern |
+|---|---|---|---|
+| Asphalt | Concrete | 4 | Knightsridge Dr & Dunbrack St area |
+| Asphalt | Crusher Dust | 9 | Westridge Dr / Clayton Park area; includes TR7141884 (needs TR_ID fix) |
+| Asphalt | Gravel | 8 | Mix of locations incl. 150 Waterfront Dr, Mainland North Linear Pkwy |
+| Brick | Concrete | 19 | Almost entirely at **150 WATERFRONT DR** — likely a systematic domain classification difference for this location |
+| Brick | Wood | 1 | 150 WATERFRONT DR |
+| Concrete | Gravel | 1 | Parkland Dr |
+| Crusher Dust | Asphalt | 2 | Includes TR7141896 (needs TR_ID fix) |
+| Crusher Dust | Concrete | 1 | Windrock Dr |
+| Crusher Dust | Natural | 2 | Includes TR7141885 (needs TR_ID fix) |
+| Gravel | Asphalt | 5 | Clayton Park Dr & Vimy Ave area |
+| Gravel | Crusher Dust | 9 | Multiple locations; includes TR7141864 (needs TR_ID fix) |
+| Gravel | Natural | 1 | Includes TR7141882 (needs TR_ID fix) — counts in Gravel/Natural row |
+| Paver Stones | Concrete | 1 | Fort Sackville Rd |
+| Wood | Concrete | 1 | Spring St |
+| **Total** | | **63** | |
+
+#### CHK03 Analysis Notes
+
+1. **Brick vs. Concrete cluster at 150 WATERFRONT DR (19 of 63 records):** The concentration of Brick → Concrete discrepancies at a single address is striking. This is likely a systematic difference in how Eagle and HRM classify the same surface (e.g., Eagle may be observing and logging "brick" for a surface that HRM has historically categorized as "concrete" based on its function or base material). Before applying HRM's values as authoritative, verify this classification intent with HRM Parks/Active Transportation staff familiar with this location.
+
+2. **TR_ID-affected records in CHK03 (5 records flagged):** The four records with TR7141xxx IDs (TR7141884, TR7141885, TR7141864, TR7141882, TR7141896) are the same features from CHK01 whose IDs need to be restored. The SURF_MAT correction for these records should be evaluated alongside the TR_ID remediation. After TR_ID is restored, confirm whether the SURF_MAT discrepancy is a genuine field-collected observation or a carry-over artifact.
+
+3. **SURF_MAT discrepancies do not block TR_ID remediation** — the two issues are independent and the TR_ID restore can proceed separately. However, it would be efficient to address both in the same versioned edit session where the five overlapping records are concerned.
+
+---
+
+### 12.3 Recommended Next Steps (based on CHK01 + CHK03)
+
+| Priority | Action | Owner |
+|----------|--------|-------|
+| 1 | Confirm TR1100774 → TR1101360 anomaly via archive query (Section 12.1) before including in remediation script | GIS Admin |
+| 2 | Proceed with TR_ID remediation (Section 8.2) using the authoritative CHK01 mapping table above (33 confirmed + 1 pending anomaly investigation) | GIS Admin |
+| 3 | Investigate the Brick vs. Concrete cluster at 150 WATERFRONT DR with Parks/Active Transportation staff; confirm which value is authoritative before applying SURF_MAT updates | GIS Manager / Field |
+| 4 | Review remaining 44 CHK03 SURF_MAT discrepancies (non-Waterfront, non-TR7141xxx) with HRM field knowledge and Eagle field notes before deciding accept/reject for each | GIS / Field |
+| 5 | Apply agreed SURF_MAT corrections in a versioned edit session, reconcile and post to Default | GIS Admin |
+| 6 | Confirm that Kirk's CHK01 list of 34 represents the complete scope of affected features in this submission, or whether additional affected records exist outside the Eagle Walkway Mups dataset | GIS / Kirk |
+
+---
+
 *Document prepared for: Justin Chang, Marcela Soto Trujillo, Alex Gallagher*
 *Related ticket: Missing Asset IDs in TRN Sectrav (raised by Kirk, March 4, 2026)*
-*Last updated: 2026-03-05*
+*Last updated: 2026-03-09*
