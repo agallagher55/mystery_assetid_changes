@@ -1,7 +1,7 @@
 # Troubleshooting Plan: Changing Asset IDs in `[GISRW01].[sdeadm].[TRN_SECTRAV]`
 
 **Prepared:** 2026-03-05
-**Updated:** 2026-03-09 — Kirk's Eagle Walkway Mups QC findings added (Section 12)
+**Updated:** 2026-03-09 — Kirk's Eagle Walkway Mups QC findings added (Section 12); TR1100774/TR1101360 anomaly resolved (duplicate geometry, not replacement)
 **Issue:** `TR_ID` and `ASSETID` fields are changing on existing features after consultant data is reconciled back into the enterprise geodatabase.
 **Status: ROOT CAUSE CONFIRMED** — Consultant workflow used batch delete+insert (not in-place update) on 2026-01-08, triggering Insert-only attribute rules and assigning new IDs to 62 features.
 **Database:** `[GISRW01].[sdeadm].[TRN_SECTRAV]` (archiving enabled) — SQL Server enterprise geodatabase, read-write connection
@@ -716,7 +716,7 @@ Apply the same diagnostic and remediation steps from this document to each affec
 
 ### 12.1 CHK01 — TR_ID Discrepancies (34 records)
 
-**Summary:** 33 of the 34 flagged records follow the known pattern from the confirmed 2026-01-08 batch delete+insert event — original IDs in the TR1xxxxxx / TR3xxxxxx / TR5xxxxxx / TR7100xxxxx range were replaced with new IDs in the TR7141xxx range. One record is anomalous and requires separate investigation.
+**Summary:** 33 of the 34 flagged records follow the known pattern from the confirmed 2026-01-08 batch delete+insert event — original IDs in the TR1xxxxxx / TR3xxxxxx / TR5xxxxxx / TR7100xxxxx range were replaced with new IDs in the TR7141xxx range. One record (`TR1100774 → TR1101360`) was anomalous and has been investigated — see findings below. It is **excluded from the CHK01 remediation script**; it is a separate duplicate geometry issue.
 
 **Full mapping — CHK01:**
 
@@ -759,27 +759,42 @@ Apply the same diagnostic and remediation steps from this document to each affec
 
 > **Note on existing mapping table:** The Section 2.3 query template previously referenced `('TR7126644', 'TR7141895')` as a placeholder example. Kirk's QC review provides the authoritative mapping: TR7126642 → TR7141895 and TR7126644 → TR7141896. Use Kirk's CHK01 table above for all remediation work.
 
-#### TR1100774 → TR1101360 Anomaly
+#### TR1100774 → TR1101360 Anomaly — RESOLVED (2026-03-09)
 
-This pair does not fit the 2026-01-08 batch event:
-- The new ID `TR1101360` is in the `TR110xxxx` range — a pre-migration Oracle-sequence range — not in the `TR7141xxx` post-migration SQL Server range.
-- This suggests either: (a) a separate, earlier delete+insert event occurred for this feature; or (b) a manual ID edit was performed at some point.
+**Finding: This is a duplicate geometry, not a TR_ID replacement. Exclude from CHK01 remediation.**
 
-**Action required before remediation:** Run the following query to check the archive history for TR1100774:
+Three diagnostic queries were run (results confirmed 2026-03-09):
+
+**Archive history (Query 1):**
+
+| TR_ID | ASSETID | GDB_FROM_DATE | GDB_TO_DATE | OBJECTID |
+|---|---|---|---|---|
+| TR1100774 | TR1100774 | 2024-11-30 23:23:12 | 2025-03-31 13:04:58 | 13754 |
+| TR1100774 | TR1100774 | 2025-03-31 13:04:58 | 2025-11-24 09:53:41 | 13754 |
+| TR1100774 | TR1100774 | 2025-11-24 09:53:41 | **9999-12-31** | 13754 |
+| TR1101360 | TR1101360 | 2024-11-30 23:23:12 | 2025-03-31 13:04:58 | 12703 |
+| TR1101360 | TR1101360 | 2025-03-31 13:04:58 | 2025-11-24 09:53:41 | 12703 |
+| TR1101360 | TR1101360 | 2025-11-24 09:53:41 | **9999-12-31** | 12703 |
+
+**Live table check (Query 2):** Both `TR1100774` (OBJECTID 13754) and `TR1101360` (OBJECTID 12703) are present in the live table simultaneously.
+
+**Spatial coincidence (Query 3):** `distance_m = 0` — geometries are identical.
+
+**Interpretation:**
+- `TR1100774` was **never deleted**. It has been continuously live since at least 2024-11-30 with no deletion event in the archive.
+- `TR1101360` is a **separate, co-located feature** with a different OBJECTID that has also been live since 2024-11-30 — predating the 2026-01-08 batch event by over a year.
+- Kirk's QC tool matched `TR1101360` at this location (likely alphabetically or by OBJECTID order) and flagged it as the "current" value — but `TR1100774` is also there. This is a **pre-existing duplicate geometry**, not a TR_ID replacement caused by the consultant workflow.
+- This pair is **not a CHK01 issue** and must not be included in the TR_ID remediation script.
+
+**Separate action required — duplicate geometry cleanup:**
+
+Determine which TR_ID is the authoritative record for this location (TR1100774 is the HRM reference ID and should be retained), then delete the duplicate (TR1101360) in a versioned edit session. Before deleting, check whether TR1101360 has any Cityworks records attached (since both IDs have been live for over a year, Cityworks may reference either).
 
 ```sql
--- Full archive history for TR1100774
-SELECT TR_ID, ASSETID, GDB_FROM_DATE, GDB_TO_DATE, OBJECTID
-FROM sdeadm.TRN_SECTRAV_H
-WHERE TR_ID IN ('TR1100774', 'TR1101360')
-ORDER BY GDB_FROM_DATE;
-
--- Confirm TR1100774 is absent from live table
-SELECT COUNT(*) AS still_live FROM sdeadm.TRN_SECTRAV WHERE TR_ID = 'TR1100774';
-SELECT COUNT(*) AS still_live FROM sdeadm.TRN_SECTRAV WHERE TR_ID = 'TR1101360';
+-- Check if TR1101360 has Cityworks activity before deleting
+-- (run against Cityworks DB or via Cityworks API — substitute actual table/column names)
+SELECT * FROM <CW_ASSET_TABLE> WHERE ASSETID = 'TR1101360';
 ```
-
-Confirm spatial coincidence between the two features (if TR1101360 exists in live table) before including this pair in the CHK01 remediation script.
 
 ---
 
@@ -902,12 +917,13 @@ Confirm spatial coincidence between the two features (if TR1101360 exists in liv
 
 | Priority | Action | Owner |
 |----------|--------|-------|
-| 1 | Confirm TR1100774 → TR1101360 anomaly via archive query (Section 12.1) before including in remediation script | GIS Admin |
-| 2 | Proceed with TR_ID remediation (Section 8.2) using the authoritative CHK01 mapping table above (33 confirmed + 1 pending anomaly investigation) | GIS Admin |
-| 3 | Investigate the Brick vs. Concrete cluster at 150 WATERFRONT DR with Parks/Active Transportation staff; confirm which value is authoritative before applying SURF_MAT updates | GIS Manager / Field |
-| 4 | Review remaining 44 CHK03 SURF_MAT discrepancies (non-Waterfront, non-TR7141xxx) with HRM field knowledge and Eagle field notes before deciding accept/reject for each | GIS / Field |
-| 5 | Apply agreed SURF_MAT corrections in a versioned edit session, reconcile and post to Default | GIS Admin |
-| 6 | Confirm that Kirk's CHK01 list of 34 represents the complete scope of affected features in this submission, or whether additional affected records exist outside the Eagle Walkway Mups dataset | GIS / Kirk |
+| 1 | ✅ TR1100774 → TR1101360 anomaly resolved — confirmed duplicate geometry, not a replacement. Excluded from remediation script. | GIS Admin |
+| 2 | Proceed with TR_ID remediation (Section 8.2) using the **33-record** CHK01 mapping table above (TR1100774 excluded) | GIS Admin |
+| 3 | Resolve TR1100774 / TR1101360 duplicate geometry — check Cityworks for activity on TR1101360 before deleting it; retain TR1100774 as the authoritative record | GIS Admin |
+| 4 | Investigate the Brick vs. Concrete cluster at 150 WATERFRONT DR with Parks/Active Transportation staff; confirm which value is authoritative before applying SURF_MAT updates | GIS Manager / Field |
+| 5 | Review remaining 44 CHK03 SURF_MAT discrepancies (non-Waterfront, non-TR7141xxx) with HRM field knowledge and Eagle field notes before deciding accept/reject for each | GIS / Field |
+| 6 | Apply agreed SURF_MAT corrections in a versioned edit session, reconcile and post to Default | GIS Admin |
+| 7 | Confirm that Kirk's CHK01 list of 34 represents the complete scope of affected features in this submission, or whether additional affected records exist outside the Eagle Walkway Mups dataset | GIS / Kirk |
 
 ---
 
