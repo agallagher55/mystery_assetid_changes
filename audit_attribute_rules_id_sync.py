@@ -83,10 +83,13 @@ _RE_MIRROR = re.compile(r"\$feature\.(\w+)", re.IGNORECASE)
 # Helper: extract numeric portion of an ID value for sorting/comparison
 # ---------------------------------------------------------------------------
 def _numeric_part(value):
+    
     """Return the integer portion of an ID string (e.g. 'TR7141890' -> 7141890)."""
     if value is None:
         return -1
+    
     digits = re.sub(r"[^0-9]", "", str(value))
+    
     return int(digits) if digits else -1
 
 
@@ -341,6 +344,7 @@ def check_id_sync(sde_conn, fc_rules):
 # CSV writers
 # ---------------------------------------------------------------------------
 def _write_rules_csv(rules, path):
+    
     if not rules:
         logger.warning("No matching rules to write — rules CSV will not be created")
         return
@@ -350,6 +354,7 @@ def _write_rules_csv(rules, path):
         "field", "is_sequence_rule", "is_mirror_rule", "sequence_name",
         "mirror_source_field", "id_rule_count_for_fc", "script_expression",
     ]
+    
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -360,7 +365,9 @@ def _write_rules_csv(rules, path):
 
 
 def _write_sync_csv(sync_results, path):
+    
     if not sync_results:
+        
         logger.warning("No sync results to write — sync CSV will not be created")
         return
 
@@ -368,6 +375,7 @@ def _write_sync_csv(sync_results, path):
         "feature_class", "primary_field", "secondary_field", "is_versioned",
         "total_records", "mismatch_count", "latest_primary_id", "pct_in_sync",
     ]
+    
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
