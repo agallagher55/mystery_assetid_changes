@@ -83,13 +83,13 @@ _RE_MIRROR = re.compile(r"\$feature\.(\w+)", re.IGNORECASE)
 # Helper: extract numeric portion of an ID value for sorting/comparison
 # ---------------------------------------------------------------------------
 def _numeric_part(value):
-    
+
     """Return the integer portion of an ID string (e.g. 'TR7141890' -> 7141890)."""
     if value is None:
         return -1
-    
+
     digits = re.sub(r"[^0-9]", "", str(value))
-    
+
     return int(digits) if digits else -1
 
 
@@ -97,6 +97,7 @@ def _numeric_part(value):
 # Function 1: get_attribute_rules
 # ---------------------------------------------------------------------------
 def get_attribute_rules(sde_conn):
+
     """
     Walk all feature classes in the sdeadm workspace and collect attribute rules
     that reference a database sequence (NextSequenceValue) or mirror another field
@@ -108,8 +109,9 @@ def get_attribute_rules(sde_conn):
             script_expression, is_sequence_rule, is_mirror_rule,
             sequence_name, mirror_source_field, id_rule_count_for_fc
     """
+
     logger.info("=" * 60)
-    logger.info("STEP 1 — Scanning sdeadm feature classes for attribute rules")
+    logger.info("STEP 1 — Scanning sdeadm feature classes for attribute ...")
     logger.info("=" * 60)
 
     all_rules = []
@@ -118,15 +120,20 @@ def get_attribute_rules(sde_conn):
 
     for dirpath, _datasets, fcs in arcpy.da.Walk(sde_conn, datatype="FeatureClass"):
 
-        for fc_name in fcs:
-            fc_path = os.path.join(dirpath, fc_name)
+        for feature_name in fcs:
+            print(feature_name)
+
+            if "AST_ped_ramp" not in feature_name:
+                continue
+
+            fc_path = os.path.join(dirpath, feature_name)
             fc_scanned += 1
 
             try:
                 desc = arcpy.Describe(fc_path)
 
             except Exception:
-                logger.warning(f"Could not describe {fc_name} — skipping")
+                logger.warning(f"Could not describe {feature_name} — skipping")
                 continue
 
             # attributeRules returns an empty list if none are defined
@@ -139,6 +146,7 @@ def get_attribute_rules(sde_conn):
             for rule in rules:
 
                 expr = getattr(rule, "scriptExpression", "") or ""
+
                 is_sequence = bool(_RE_SEQUENCE.search(expr))
                 is_mirror = bool(_RE_MIRROR.search(expr))
 
@@ -161,7 +169,7 @@ def get_attribute_rules(sde_conn):
                 rule_type = getattr(rule, "type", "")
 
                 matching_rules.append({
-                    "feature_class": fc_name,
+                    "feature_class": feature_name,
                     "rule_name": rule_name,
                     "rule_type": rule_type,
                     "triggering_events": triggering_str,
@@ -184,7 +192,7 @@ def get_attribute_rules(sde_conn):
             seq_count = sum(1 for r in matching_rules if r["is_sequence_rule"])
             mir_count = sum(1 for r in matching_rules if r["is_mirror_rule"])
             logger.info(
-                f"  {fc_name}: {id_rule_count} ID rule(s) found "
+                f"  {feature_name}: {id_rule_count} ID rule(s) found "
                 f"[sequence={seq_count}, mirror={mir_count}]"
             )
 
@@ -236,6 +244,7 @@ def check_id_sync(sde_conn, fc_rules):
             total_records, mismatch_count, latest_primary_id,
             pct_in_sync
     """
+
     logger.info("=" * 60)
     logger.info("STEP 2 — Checking ID field sync for dual-ID feature classes")
     logger.info("=" * 60)
@@ -246,9 +255,9 @@ def check_id_sync(sde_conn, fc_rules):
     for fc_name, rules in grouped.items():
 
         seq_rules = [r for r in rules if r["is_sequence_rule"]]
-        mir_rules = [r for r in rules if r["is_mirror_rule"]]
+        mirror_rules = [r for r in rules if r["is_mirror_rule"]]
 
-        if not seq_rules or not mir_rules:
+        if not seq_rules or not mirror_rules:
             logger.info(f"  {fc_name}: skipped — does not have both sequence and mirror rules")
             continue
 
@@ -257,19 +266,21 @@ def check_id_sync(sde_conn, fc_rules):
                 f"  {fc_name}: {len(seq_rules)} sequence rules found — "
                 "using the first one; review manually if unexpected"
             )
-        if len(mir_rules) > 1:
+
+        if len(mirror_rules) > 1:
             logger.warning(
-                f"  {fc_name}: {len(mir_rules)} mirror rules found — "
+                f"  {fc_name}: {len(mirror_rules)} mirror rules found — "
                 "using the first one; review manually if unexpected"
             )
 
         primary_field = seq_rules[0]["field"]
-        secondary_field = mir_rules[0]["field"]
+        secondary_field = mirror_rules[0]["field"]
 
         # Build the cursor target — use _evw view for versioned FCs
         try:
             fc_path = os.path.join(sde_conn, fc_name)
             is_versioned = arcpy.Describe(fc_path).isVersioned
+
         except Exception:
             logger.warning(f"  {fc_name}: could not determine versioning — using base FC path")
             is_versioned = False
@@ -283,7 +294,9 @@ def check_id_sync(sde_conn, fc_rules):
         latest_primary_id = None
 
         try:
+
             with arcpy.da.SearchCursor(cursor_target, [primary_field, secondary_field]) as cur:
+
                 for row in cur:
                     primary_val, secondary_val = row
                     total += 1
@@ -299,6 +312,7 @@ def check_id_sync(sde_conn, fc_rules):
                         mismatches += 1
                         if len(mismatch_ids) < 20:
                             mismatch_ids.append(str(primary_val))
+
         except Exception:
             logger.error(
                 f"  {fc_name}: error reading cursor on {cursor_target}",
@@ -344,7 +358,7 @@ def check_id_sync(sde_conn, fc_rules):
 # CSV writers
 # ---------------------------------------------------------------------------
 def _write_rules_csv(rules, path):
-    
+
     if not rules:
         logger.warning("No matching rules to write — rules CSV will not be created")
         return
@@ -354,7 +368,7 @@ def _write_rules_csv(rules, path):
         "field", "is_sequence_rule", "is_mirror_rule", "sequence_name",
         "mirror_source_field", "id_rule_count_for_fc", "script_expression",
     ]
-    
+
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -365,9 +379,9 @@ def _write_rules_csv(rules, path):
 
 
 def _write_sync_csv(sync_results, path):
-    
+
     if not sync_results:
-        
+
         logger.warning("No sync results to write — sync CSV will not be created")
         return
 
@@ -375,7 +389,7 @@ def _write_sync_csv(sync_results, path):
         "feature_class", "primary_field", "secondary_field", "is_versioned",
         "total_records", "mismatch_count", "latest_primary_id", "pct_in_sync",
     ]
-    
+
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -405,6 +419,7 @@ def main():
         fc for fc, rs in _group_by_fc(rules).items()
         if any(r["is_sequence_rule"] for r in rs) and any(r["is_mirror_rule"] for r in rs)
     })
+
     logger.info(
         f"SUMMARY — Step 1: {len(rules)} ID rule(s) found across feature classes; "
         f"{dual_id_count} FC(s) have the dual-ID pattern"
