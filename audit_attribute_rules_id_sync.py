@@ -323,8 +323,8 @@ def check_id_sync(sde_conn, fc_rules):
                         max_numeric = numeric
                         latest_primary_id = primary_val
 
-                    # Compare; treat None/null as mismatched
-                    if primary_val != secondary_val:
+                    # Compare numeric portions only — ignore any field-specific prefix
+                    if _numeric_part(primary_val) != _numeric_part(secondary_val):
                         mismatches += 1
                         if len(mismatch_ids) < 20:
                             mismatch_ids.append(str(primary_val))
