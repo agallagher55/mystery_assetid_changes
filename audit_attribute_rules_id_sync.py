@@ -20,8 +20,10 @@ import time
 import traceback
 import logging
 import arcpy
+
 from collections import defaultdict
 from configparser import ConfigParser
+
 from HRMutils import setupLog, send_mail
 
 # ---------------------------------------------------------------------------
