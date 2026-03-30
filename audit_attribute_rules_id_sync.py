@@ -39,17 +39,16 @@ SCRATCH_DIR = os.path.join(WORKING_DIR, "Scratch")
 # Config
 # ---------------------------------------------------------------------------
 config = ConfigParser()
-config.read("E:\\HRM\\Scripts\\Python\\config.ini")
+config.read("config.ini")
 
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-log_dir = os.path.join(config.get("LOGGING", "logDir"), WD_FOLDER_NAME)
+log_dir = os.getcwd()
 os.makedirs(log_dir, exist_ok=True)
 
 log_file = os.path.join(log_dir, f"{str(datetime.date.today())}_{FILE_NAME_BASE}.log")
 logger = setupLog(log_file)
-log_server = config.get("LOGGING", "serverName")
 
 console_handler = logging.StreamHandler()
 log_formatter = logging.Formatter(
@@ -59,16 +58,14 @@ log_formatter = logging.Formatter(
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
 
-# ---------------------------------------------------------------------------
-# ArcPy environment
-# ---------------------------------------------------------------------------
 arcpy.SetLogHistory(False)
 arcpy.env.overwriteOutput = True
 
 # ---------------------------------------------------------------------------
 # SDE connections
 # ---------------------------------------------------------------------------
-SDEADM_RO = config.get("SDEADM_RO", "sdeFile")
+SDEADM_RW = config.get("SERVER", "qa_rw")
+# SDEADM_RW = config.get("SERVER", "prod_rw")
 
 # ---------------------------------------------------------------------------
 # CSV output paths
@@ -117,12 +114,14 @@ def get_attribute_rules(sde_conn):
     fc_with_rules = 0
 
     for dirpath, _datasets, fcs in arcpy.da.Walk(sde_conn, datatype="FeatureClass"):
+
         for fc_name in fcs:
             fc_path = os.path.join(dirpath, fc_name)
             fc_scanned += 1
 
             try:
                 desc = arcpy.Describe(fc_path)
+
             except Exception:
                 logger.warning(f"Could not describe {fc_name} — skipping")
                 continue
@@ -133,7 +132,9 @@ def get_attribute_rules(sde_conn):
                 continue
 
             matching_rules = []
+
             for rule in rules:
+
                 expr = getattr(rule, "scriptExpression", "") or ""
                 is_sequence = bool(_RE_SEQUENCE.search(expr))
                 is_mirror = bool(_RE_MIRROR.search(expr))
@@ -145,17 +146,23 @@ def get_attribute_rules(sde_conn):
                 mir_match = _RE_MIRROR.search(expr)
 
                 triggering = getattr(rule, "triggeringEvents", [])
+
                 if isinstance(triggering, (list, tuple)):
                     triggering_str = "|".join(triggering)
+
                 else:
                     triggering_str = str(triggering)
 
+                field_name = getattr(rule, "fieldName", "")
+                rule_name = getattr(rule, "name", "")
+                rule_type = getattr(rule, "type", "")
+
                 matching_rules.append({
                     "feature_class": fc_name,
-                    "rule_name": getattr(rule, "name", ""),
-                    "rule_type": getattr(rule, "type", ""),
+                    "rule_name": rule_name,
+                    "rule_type": rule_type,
                     "triggering_events": triggering_str,
-                    "field": getattr(rule, "field", ""),
+                    "field": field_name,
                     "script_expression": expr,
                     "is_sequence_rule": is_sequence,
                     "is_mirror_rule": is_mirror,
@@ -211,9 +218,6 @@ def _group_by_fc(rules):
     return grouped
 
 
-# ---------------------------------------------------------------------------
-# Function 2: check_id_sync
-# ---------------------------------------------------------------------------
 def check_id_sync(sde_conn, fc_rules):
     """
     For each feature class that has both a sequence rule and a mirror rule,
@@ -237,6 +241,7 @@ def check_id_sync(sde_conn, fc_rules):
     sync_results = []
 
     for fc_name, rules in grouped.items():
+
         seq_rules = [r for r in rules if r["is_sequence_rule"]]
         mir_rules = [r for r in rules if r["is_mirror_rule"]]
 
@@ -376,14 +381,15 @@ def _write_sync_csv(sync_results, path):
 # Main
 # ---------------------------------------------------------------------------
 def main():
+
     start_time = time.asctime(time.localtime(time.time()))
     logger.info(f"Start: {start_time}")
     logger.info(f"Script: {FILE_NAME}")
-    logger.info(f"SDE connection: {SDEADM_RO}")
+    logger.info(f"SDE connection: {SDEADM_RW}")
 
     # Step 1 — attribute rule scan
-    with arcpy.EnvManager(workspace=SDEADM_RO):
-        rules = get_attribute_rules(SDEADM_RO)
+    with arcpy.EnvManager(workspace=SDEADM_RW):
+        rules = get_attribute_rules(SDEADM_RW)
 
     _write_rules_csv(rules, RULES_CSV)
 
@@ -397,7 +403,7 @@ def main():
     )
 
     # Step 2 — ID sync check
-    sync_results = check_id_sync(SDEADM_RO, rules)
+    sync_results = check_id_sync(SDEADM_RW, rules)
     _write_sync_csv(sync_results, SYNC_CSV)
 
     fcs_out_of_sync = sum(1 for r in sync_results if r["mismatch_count"] > 0)
@@ -427,10 +433,10 @@ except:
     )
     logger.error(pymsg)
 
-    send_mail(
-        to=str(config.get("EMAIL", "recipients")).split(","),
-        subject=f"ERROR - {FILE_NAME_BASE} Failed",
-        text=f"{log_server} / {FILE_NAME} \n\n{pymsg}",
-    )
+    # send_mail(
+    #     to=str(config.get("EMAIL", "recipients")).split(","),
+    #     subject=f"ERROR - {FILE_NAME_BASE} Failed",
+    #     text=f"{log_server} / {FILE_NAME} \n\n{pymsg}",
+    # )
 
     sys.exit()
