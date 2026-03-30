@@ -255,7 +255,13 @@ def check_id_sync(sde_conn, fc_rules):
     for fc_name, rules in grouped.items():
 
         seq_rules = [r for r in rules if r["is_sequence_rule"]]
-        mirror_rules = [r for r in rules if r["is_mirror_rule"]]
+
+        # Only count a mirror rule if it references a sequence-backed field
+        seq_fields = {r["field"] for r in seq_rules}
+        mirror_rules = [
+            r for r in rules
+            if r["is_mirror_rule"] and r["mirror_source_field"] in seq_fields
+        ]
 
         # Case 1: two sequence rules — compare them directly
         if len(seq_rules) >= 2 and not mirror_rules:
