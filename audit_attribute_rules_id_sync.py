@@ -257,24 +257,34 @@ def check_id_sync(sde_conn, fc_rules):
         seq_rules = [r for r in rules if r["is_sequence_rule"]]
         mirror_rules = [r for r in rules if r["is_mirror_rule"]]
 
-        if not seq_rules or not mirror_rules:
-            logger.info(f"  {fc_name}: skipped — does not have both sequence and mirror rules")
+        # Case 1: two sequence rules — compare them directly
+        if len(seq_rules) >= 2 and not mirror_rules:
+            if len(seq_rules) > 2:
+                logger.warning(
+                    f"  {fc_name}: {len(seq_rules)} sequence rules found — "
+                    "using the first two; review manually if unexpected"
+                )
+            primary_field = seq_rules[0]["field"]
+            secondary_field = seq_rules[1]["field"]
+
+        # Case 2: one sequence rule + one mirror rule — original pattern
+        elif seq_rules and mirror_rules:
+            if len(seq_rules) > 1:
+                logger.warning(
+                    f"  {fc_name}: {len(seq_rules)} sequence rules found — "
+                    "using the first one; review manually if unexpected"
+                )
+            if len(mirror_rules) > 1:
+                logger.warning(
+                    f"  {fc_name}: {len(mirror_rules)} mirror rules found — "
+                    "using the first one; review manually if unexpected"
+                )
+            primary_field = seq_rules[0]["field"]
+            secondary_field = mirror_rules[0]["field"]
+
+        else:
+            logger.info(f"  {fc_name}: skipped — needs either two sequence rules or one sequence + one mirror rule")
             continue
-
-        if len(seq_rules) > 1:
-            logger.warning(
-                f"  {fc_name}: {len(seq_rules)} sequence rules found — "
-                "using the first one; review manually if unexpected"
-            )
-
-        if len(mirror_rules) > 1:
-            logger.warning(
-                f"  {fc_name}: {len(mirror_rules)} mirror rules found — "
-                "using the first one; review manually if unexpected"
-            )
-
-        primary_field = seq_rules[0]["field"]
-        secondary_field = mirror_rules[0]["field"]
 
         # Build the cursor target — use _evw view for versioned FCs
         try:
