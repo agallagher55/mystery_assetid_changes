@@ -99,9 +99,9 @@ def _numeric_part(value):
 def get_attribute_rules(sde_conn):
 
     """
-    Walk all feature classes in the sdeadm workspace and collect attribute rules
-    that reference a database sequence (NextSequenceValue) or mirror another field
-    ($feature.<FIELD>).
+    Walk all feature classes and tables (including those inside feature datasets)
+    in the sdeadm workspace and collect attribute rules that reference a database
+    sequence (NextSequenceValue) or mirror another field ($feature.<FIELD>).
 
     Returns:
         list[dict] -- one dict per matching rule with keys:
@@ -111,14 +111,14 @@ def get_attribute_rules(sde_conn):
     """
 
     logger.info("=" * 60)
-    logger.info("STEP 1 — Scanning sdeadm feature classes for attribute ...")
+    logger.info("STEP 1 — Scanning sdeadm feature classes and tables for attribute ...")
     logger.info("=" * 60)
 
     all_rules = []
     fc_scanned = 0
     fc_with_rules = 0
 
-    for dirpath, _datasets, fcs in arcpy.da.Walk(sde_conn, datatype="FeatureClass"):
+    for dirpath, _datasets, fcs in arcpy.da.Walk(sde_conn, datatype=["FeatureClass", "Table"]):
 
         for feature_name in fcs:
             print(feature_name)
@@ -197,7 +197,7 @@ def get_attribute_rules(sde_conn):
             fc_with_rules += 1
 
     logger.info("-" * 60)
-    logger.info(f"Scanned {fc_scanned} feature class(es)")
+    logger.info(f"Scanned {fc_scanned} feature class(es)/table(s)")
     logger.info(f"  {fc_with_rules} have sequence/mirror attribute rules")
     logger.info(
         f"  {sum(1 for r in all_rules if r['is_sequence_rule'] and r['is_mirror_rule'] == False)} "
@@ -213,7 +213,7 @@ def get_attribute_rules(sde_conn):
         if any(r["is_sequence_rule"] for r in rules)
         and any(r["is_mirror_rule"] for r in rules)
     }
-    logger.info(f"  {len(dual_id_fcs)} feature class(es) have BOTH sequence + mirror rules (dual-ID pattern)")
+    logger.info(f"  {len(dual_id_fcs)} feature class(es)/table(s) have BOTH sequence + mirror rules (dual-ID pattern)")
 
     return all_rules
 
@@ -243,7 +243,7 @@ def check_id_sync(sde_conn, fc_rules):
     """
 
     logger.info("=" * 60)
-    logger.info("STEP 2 — Checking ID field sync for dual-ID feature classes")
+    logger.info("STEP 2 — Checking ID field sync for dual-ID feature classes and tables")
     logger.info("=" * 60)
 
     grouped = _group_by_fc(fc_rules)
@@ -361,7 +361,7 @@ def check_id_sync(sde_conn, fc_rules):
 
     logger.info("-" * 60)
     fcs_with_mismatches = sum(1 for r in sync_results if r["mismatch_count"] > 0)
-    logger.info(f"Checked {len(sync_results)} dual-ID feature class(es)")
+    logger.info(f"Checked {len(sync_results)} dual-ID feature class(es)/table(s)")
     logger.info(f"  {fcs_with_mismatches} have out-of-sync ID fields")
 
     return sync_results
