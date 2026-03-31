@@ -64,8 +64,8 @@ arcpy.env.overwriteOutput = True
 # ---------------------------------------------------------------------------
 # SDE connections
 # ---------------------------------------------------------------------------
-SDEADM_RW = config.get("SERVER", "qa_rw")
-# SDEADM_RW = config.get("SERVER", "prod_rw")
+# SDEADM_RW = config.get("SERVER", "qa_rw")
+SDEADM_RW = config.get("SERVER", "prod_rw")
 
 # ---------------------------------------------------------------------------
 # CSV output paths
@@ -122,9 +122,6 @@ def get_attribute_rules(sde_conn):
 
         for feature_name in fcs:
             print(feature_name)
-
-            if "AST_ped_ramp" not in feature_name:
-                continue
 
             fc_path = os.path.join(dirpath, feature_name)
             fc_scanned += 1
