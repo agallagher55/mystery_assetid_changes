@@ -37,6 +37,14 @@ Two Insert-only attribute rules govern ID assignment:
 
 Because both rules fire **on Insert only**, IDs should never change on an existing feature. The fact that they are changing means features are being **deleted and re-inserted** somewhere in the reconciliation workflow, rather than being updated in place.
 
+### Sequence Cache and ID Gaps
+
+The `sdeadm.sectravid` sequence (and all other sequences in the geodatabase) uses SQL Server's **default cache size of 50**. This means SQL Server pre-allocates the next 50 sequence values in memory at once rather than hitting disk for every insert.
+
+**Implication for this investigation:** If the server restarts or the sequence cache is flushed for any reason, up to 49 pre-allocated but unused values are permanently discarded, and the sequence jumps to the next uncached block. This is the normal explanation for non-consecutive TR_ID numbers — gaps in the sequence do **not** by themselves indicate missing features or a problem.
+
+However, this also means the sequence advancing into the 7-million range (despite far fewer live features) is consistent with repeated cycles of bulk inserts consuming large blocks of cached values — especially if the delete+insert workflow has been run multiple times across different layers (Bus Pads, TRN_SECTRAV, etc.).
+
 ---
 
 ## Repository Contents
