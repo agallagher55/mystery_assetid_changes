@@ -45,6 +45,19 @@ The `sdeadm.sectravid` sequence (and all other sequences in the geodatabase) use
 
 However, this also means the sequence advancing into the 7-million range (despite far fewer live features) is consistent with repeated cycles of bulk inserts consuming large blocks of cached values — especially if the delete+insert workflow has been run multiple times across different layers (Bus Pads, TRN_SECTRAV, etc.).
 
+### Multiple Sequences Per Feature: Independent Cache States
+
+If a feature class has two attribute rules each drawing from a **different** sequence, those sequences maintain completely independent cache states. Each has its own current position within its 50-value block, and neither is aware of the other.
+
+During a bulk load this matters because:
+
+- Sequence A might be near the **end** of its current cache block (e.g., position 48 of 50) when the bulk insert starts. After just 2 rows it exhausts the block, discards any remaining values, and fetches the next block of 50 — creating an apparent gap.
+- Sequence B might be near the **start** of its cache block (e.g., position 3 of 50) at the same moment. The same bulk insert of, say, 10 rows doesn't push it past the cache boundary at all — no gap.
+
+So **yes, it is entirely normal for one sequence to skip values during a bulk load while another does not.** It simply depends on where each sequence happened to be sitting in its cache cycle at the moment the inserts began — which is essentially random from the perspective of any given operation.
+
+The practical takeaway: if you observe that `TR_ID` values jumped but a corresponding field from a second sequence did not (or vice versa), that asymmetry is expected behavior and does not indicate a deeper problem with one sequence over the other. It is not a useful diagnostic signal for determining whether a delete+insert occurred — the archive table timestamps remain the most reliable evidence for that.
+
 ---
 
 ## Repository Contents
