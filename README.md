@@ -60,6 +60,30 @@ The practical takeaway: if you observe that `TR_ID` values jumped but a correspo
 
 ---
 
+## Known Problems
+
+Two distinct problems have been observed. They can occur independently and have different root causes.
+
+### Problem 1 — IDs change entirely after reconciliation (delete + insert)
+
+Features exported to the consultant with one ID (e.g., `TR1001088`) come back with a completely different ID (e.g., `TR7141890`). This is caused by the consultant's submission workflow performing a **delete + insert** (Append with truncate, or equivalent full reload) rather than in-place updates. Because the attribute rules are Insert-only, they fire on re-insert and assign brand-new sequence values. The original IDs are permanently overwritten.
+
+Root cause confirmed — see `TROUBLESHOOTING.md` Section 3.
+
+### Problem 2 — TR_ID and ASSETID become out of sync after a bulk Append
+
+Records are inserted with `TR_ID` and `ASSETID` holding **different values** from each other, even though the ASSETID rule is simply supposed to mirror TR_ID (`$feature.TR_ID`). This is a separate failure mode from Problem 1 and is most likely caused by **attribute rule execution order** during a batch operation.
+
+When ArcGIS processes a bulk Append, Insert-only attribute rules fire in their defined execution order. If the ASSETID rule runs **before** the TR_ID rule has completed:
+
+- `$feature.TR_ID` is still the source value (or NULL) at the moment ASSETID evaluates it
+- The TR_ID rule then fires and writes a new sequence value
+- Result: `TR_ID = TR7141856` (new), `ASSETID = TR1001088` (stale source value) — permanently out of sync
+
+The fix is to ensure the TR_ID rule has a **lower execution order number** than the ASSETID rule, so TR_ID is always assigned before ASSETID tries to read it. This ordering works correctly in single-row interactive edits (where rules fire sequentially per row) but breaks down in batch/Append contexts where ordering across rules matters more.
+
+---
+
 ## Repository Contents
 
 | File | Description |
