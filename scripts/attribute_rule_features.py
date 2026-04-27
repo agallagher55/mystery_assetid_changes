@@ -36,10 +36,8 @@ def get_attr_rule_tables(sde_conn):
     with open("../attr_rule_tables.sql", "r") as file:
         sql_statement = file.read()
 
-    # tables = [x[0] for x in sql_executor.execute(sql_statement)]
     attr_rule_table_info = sql_executor.execute(sql_statement)
 
-    # agg_field_table_info = dict.fromkeys([x[0] for x in attr_rule_table_info],[])
     agg_field_table_info = {x[0]: [] for x in attr_rule_table_info}
 
     for table in attr_rule_table_info:
