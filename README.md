@@ -33,7 +33,9 @@ Two Insert-only attribute rules govern ID assignment:
 | Rule | Field | Expression |
 |------|-------|------------|
 | TRN_sectrav - TR_ID - Generate ID | `TR_ID` | `'TR' + NextSequenceValue('sdeadm.sectravid')` |
-| TRN_sectrav - ASSETID - Generate ID | `ASSETID` | `$feature.TR_ID` |
+| TRN_sectrav - ASSETID - Generate ID | `ASSETID` | `'TR' + NextSequenceValue('sdeadm.<assetid_sequence>')` |
+
+> **Note:** Both rules draw from their own independent sequences. This means the two fields can drift out of sync — see Problem 2 below.
 
 Because both rules fire **on Insert only**, IDs should never change on an existing feature. The fact that they are changing means features are being **deleted and re-inserted** somewhere in the reconciliation workflow, rather than being updated in place.
 
@@ -44,6 +46,45 @@ The `sdeadm.sectravid` sequence (and all other sequences in the geodatabase) use
 **Implication for this investigation:** If the server restarts or the sequence cache is flushed for any reason, up to 49 pre-allocated but unused values are permanently discarded, and the sequence jumps to the next uncached block. This is the normal explanation for non-consecutive TR_ID numbers — gaps in the sequence do **not** by themselves indicate missing features or a problem.
 
 However, this also means the sequence advancing into the 7-million range (despite far fewer live features) is consistent with repeated cycles of bulk inserts consuming large blocks of cached values — especially if the delete+insert workflow has been run multiple times across different layers (Bus Pads, TRN_SECTRAV, etc.).
+
+### Multiple Sequences Per Feature: Independent Cache States
+
+If a feature class has two attribute rules each drawing from a **different** sequence, those sequences maintain completely independent cache states. Each has its own current position within its 50-value block, and neither is aware of the other.
+
+During a bulk load this matters because:
+
+- Sequence A might be near the **end** of its current cache block (e.g., position 48 of 50) when the bulk insert starts. After just 2 rows it exhausts the block, discards any remaining values, and fetches the next block of 50 — creating an apparent gap.
+- Sequence B might be near the **start** of its cache block (e.g., position 3 of 50) at the same moment. The same bulk insert of, say, 10 rows doesn't push it past the cache boundary at all — no gap.
+
+So **yes, it is entirely normal for one sequence to skip values during a bulk load while another does not.** It simply depends on where each sequence happened to be sitting in its cache cycle at the moment the inserts began — which is essentially random from the perspective of any given operation.
+
+The practical takeaway: if you observe that `TR_ID` values jumped but a corresponding field from a second sequence did not (or vice versa), that asymmetry is expected behavior and does not indicate a deeper problem with one sequence over the other. It is not a useful diagnostic signal for determining whether a delete+insert occurred — the archive table timestamps remain the most reliable evidence for that.
+
+---
+
+## Known Problems
+
+Two distinct problems have been observed. They can occur independently and have different root causes.
+
+### Problem 1 — IDs change entirely after reconciliation (delete + insert)
+
+Features exported to the consultant with one ID (e.g., `TR1001088`) come back with a completely different ID (e.g., `TR7141890`). This is caused by the consultant's submission workflow performing a **delete + insert** (Append with truncate, or equivalent full reload) rather than in-place updates. Because the attribute rules are Insert-only, they fire on re-insert and assign brand-new sequence values. The original IDs are permanently overwritten.
+
+Root cause confirmed — see `TROUBLESHOOTING.md` Section 3.
+
+### Problem 2 — TR_ID and ASSETID become out of sync after a bulk Append
+
+Records are inserted with `TR_ID` and `ASSETID` holding **different values** from each other. Both fields have their own Insert-only attribute rule, and each rule draws from its own independent sequence. This is the root of the problem: **two separate sequences cannot be guaranteed to stay in sync.**
+
+The sequences may have started at matching values, but any event that advances one sequence's cache differently from the other will create a permanent numeric offset between them:
+
+- A server restart discards the remaining cached values for whichever sequences were active — if both sequences were at different points in their 50-value cache blocks, they resume at different offsets
+- A bulk Append may cross a cache boundary for one sequence but not the other (depending on where each sequence sat in its cache cycle when the load started), permanently shifting them apart
+- Any other operation that consumes values from one sequence but not the other has the same effect
+
+Once the offset exists, **every subsequent insert produces a TR_ID and ASSETID that don't match**, because the two counters are now independently tracking different positions.
+
+This is a design-level problem. The only reliable fix is to remove the independent sequence from the ASSETID rule and instead have ASSETID copy `$feature.TR_ID` directly. Two separate sequences have no mechanism to stay aligned — they will always drift eventually.
 
 ---
 
