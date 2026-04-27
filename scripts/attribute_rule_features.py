@@ -15,8 +15,8 @@ arcpy.SetLogHistory(False)
 config = ConfigParser()
 config.read('config.ini')
 
-logFile = os.path.join(os.getcwd(), f"{datetime.date.today()}_loggies.log")
-logger = setupLog(logFile)
+log_file = os.path.join(os.getcwd(), f"{datetime.date.today()}_loggies.log")
+logger = setupLog(log_file)
 
 console_handler = logging.StreamHandler()
 log_formatter = logging.Formatter(
