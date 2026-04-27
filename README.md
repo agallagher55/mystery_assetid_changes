@@ -15,6 +15,17 @@ The problem manifests as:
 
 ---
 
+## Editing Methods
+
+Features in the enterprise geodatabase can be edited through two routes:
+
+- **ArcGIS Pro (desktop)** — direct connection to the SDE geodatabase. Edits happen inside a versioned edit session and are reconciled/posted back to the Default version. Attribute rules fire normally on insert.
+- **Online service (ArcGIS Enterprise / Feature Service)** — features are edited through a hosted feature service backed by the same SDE data. This route may behave differently with respect to attribute rules, sequence consumption, and how edits are committed — and is a candidate factor in the ID skipping and mismatch issues.
+
+Understanding which editing method was used for a given batch of records is key to diagnosing both the sequence-skipping (Issue B) and any duplicate/mismatch behaviour.
+
+---
+
 ## How IDs Are Generated
 
 Two Insert-only attribute rules govern ID assignment:
