@@ -100,16 +100,12 @@ if __name__ == "__main__":
 
             df.to_excel("features_multi_attr_rules.xlsx", index=False)
 
-            for info in multi_attr_fields_info:
+            # TODO: Export rules
+            # TODO: Delete rules
+            # TODO: Disable Editor tracking
 
-                print(info)
+            # TODO: Make changes
 
-                # TODO: Export rules
-                # TODO: Delete rules
-                # TODO: Disable Editor tracking
-
-                # TODO: Make changes
-
-                # TODO: Import rules
-                # TODO: Enable Editor Tracking
+            # TODO: Import rules
+            # TODO: Enable Editor Tracking
 
