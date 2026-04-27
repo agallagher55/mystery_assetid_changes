@@ -62,6 +62,35 @@ The practical takeaway: if you observe that `TR_ID` values jumped but a correspo
 
 ---
 
+## OBJECTID Behaviour and Gaps
+
+### OBJECTIDs are not reused in SDE enterprise geodatabases
+
+In a versioned SDE enterprise geodatabase on SQL Server, OBJECTIDs are assigned by SDE's internal row-ID sequences. These sequences are monotonically increasing. When a row is deleted its OBJECTID is permanently retired — it will never be assigned to a new row through normal operations. This means gaps in the OBJECTID sequence are expected and accumulate over the lifetime of the feature class.
+
+> **Note:** This behaviour is specific to SDE-registered, versioned feature classes. File geodatabases behave differently — the "Compact" operation *will* defragment and reuse OBJECTIDs, which is why OBJECTIDs are unreliable join keys in file GDB workflows. In an enterprise GDB, this is not a concern under normal use.
+
+### What causes large OBJECTID jumps
+
+| Cause | Notes |
+|-------|-------|
+| **Rows deleted via the Delete Rows GP tool** | The most common cause in this environment. Each deleted row retires its OBJECTID permanently. A batch delete of 400 rows leaves a gap of 400. |
+| **Delete + insert cycle (the root cause of this investigation)** | If a submission workflow deletes all existing features and re-inserts them, the re-inserted rows receive entirely new OBJECTIDs starting from the current high-water mark — producing the large forward jump seen in `BLD_electrical` (2431 → 2831) and `TRN_SECTRAV`. |
+| **Versioned edits abandoned without posting** | SDE allocates OBJECTIDs at the time rows are inserted in a child version, not at reconcile/post time. If a child version is created, rows inserted, and then the version is deleted without posting, those OBJECTIDs are consumed by the sequence but never appear in the DEFAULT version. |
+| **Rolled-back or failed transactions** | A transaction that begins inserting rows has already incremented the sequence. A subsequent rollback returns no rows to the table but the sequence value is not rolled back — the IDs are gone. |
+| **SDE block pre-allocation** | SDE allocates row IDs in blocks. If a block is reserved for an operation that is then cancelled or only partially completed, unused IDs within that block are discarded. |
+
+### What does NOT cause jumps in this environment
+
+- **TRUNCATE TABLE** — this would reset the SQL Server identity column and is not used here. All deletions go through the Delete Rows GP tool or versioned edit sessions, which retire individual OBJECTIDs rather than resetting the sequence.
+- **Compress** — geodatabase compress moves delta table records to the base table but does not alter OBJECTID values or reset the sequence.
+
+### Diagnostic value
+
+A large, sudden OBJECTID jump at a specific point in time (visible in the archive history table via `GDB_FROM_DATE` / `GDB_TO_DATE`) is strong circumstantial evidence that a bulk delete+insert occurred at that timestamp. It is not proof by itself, but combined with archive table row counts and timestamps it corroborates the delete+insert pattern confirmed for `TRN_SECTRAV`.
+
+---
+
 ## Known Problems
 
 Two distinct problems have been observed. They can occur independently and have different root causes.
