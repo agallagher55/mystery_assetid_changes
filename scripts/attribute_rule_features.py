@@ -26,9 +26,6 @@ console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)  # print logs to console
 logger.setLevel(logging.DEBUG)
 
-ID_FIELD_1 = 'ASSETID'
-ID_FIELD_2 = 'ASSET_ID'
-
 
 def get_attr_rule_tables(sde_conn):
 
