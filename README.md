@@ -33,7 +33,9 @@ Two Insert-only attribute rules govern ID assignment:
 | Rule | Field | Expression |
 |------|-------|------------|
 | TRN_sectrav - TR_ID - Generate ID | `TR_ID` | `'TR' + NextSequenceValue('sdeadm.sectravid')` |
-| TRN_sectrav - ASSETID - Generate ID | `ASSETID` | `$feature.TR_ID` |
+| TRN_sectrav - ASSETID - Generate ID | `ASSETID` | `'TR' + NextSequenceValue('sdeadm.<assetid_sequence>')` |
+
+> **Note:** Both rules draw from their own independent sequences. This means the two fields can drift out of sync — see Problem 2 below.
 
 Because both rules fire **on Insert only**, IDs should never change on an existing feature. The fact that they are changing means features are being **deleted and re-inserted** somewhere in the reconciliation workflow, rather than being updated in place.
 
@@ -72,15 +74,17 @@ Root cause confirmed — see `TROUBLESHOOTING.md` Section 3.
 
 ### Problem 2 — TR_ID and ASSETID become out of sync after a bulk Append
 
-Records are inserted with `TR_ID` and `ASSETID` holding **different values** from each other, even though the ASSETID rule is simply supposed to mirror TR_ID (`$feature.TR_ID`). This is a separate failure mode from Problem 1 and is most likely caused by **attribute rule execution order** during a batch operation.
+Records are inserted with `TR_ID` and `ASSETID` holding **different values** from each other. Both fields have their own Insert-only attribute rule, and each rule draws from its own independent sequence. This is the root of the problem: **two separate sequences cannot be guaranteed to stay in sync.**
 
-When ArcGIS processes a bulk Append, Insert-only attribute rules fire in their defined execution order. If the ASSETID rule runs **before** the TR_ID rule has completed:
+The sequences may have started at matching values, but any event that advances one sequence's cache differently from the other will create a permanent numeric offset between them:
 
-- `$feature.TR_ID` is still the source value (or NULL) at the moment ASSETID evaluates it
-- The TR_ID rule then fires and writes a new sequence value
-- Result: `TR_ID = TR7141856` (new), `ASSETID = TR1001088` (stale source value) — permanently out of sync
+- A server restart discards the remaining cached values for whichever sequences were active — if both sequences were at different points in their 50-value cache blocks, they resume at different offsets
+- A bulk Append may cross a cache boundary for one sequence but not the other (depending on where each sequence sat in its cache cycle when the load started), permanently shifting them apart
+- Any other operation that consumes values from one sequence but not the other has the same effect
 
-The fix is to ensure the TR_ID rule has a **lower execution order number** than the ASSETID rule, so TR_ID is always assigned before ASSETID tries to read it. This ordering works correctly in single-row interactive edits (where rules fire sequentially per row) but breaks down in batch/Append contexts where ordering across rules matters more.
+Once the offset exists, **every subsequent insert produces a TR_ID and ASSETID that don't match**, because the two counters are now independently tracking different positions.
+
+This is a design-level problem. The only reliable fix is to remove the independent sequence from the ASSETID rule and instead have ASSETID copy `$feature.TR_ID` directly. Two separate sequences have no mechanism to stay aligned — they will always drift eventually.
 
 ---
 
