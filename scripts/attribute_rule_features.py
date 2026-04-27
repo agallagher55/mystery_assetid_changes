@@ -39,14 +39,10 @@ def get_attr_rule_tables(sde_conn):
     # tables = [x[0] for x in sql_executor.execute(sql_statement)]
     attr_rule_table_info = sql_executor.execute(sql_statement)
 
-    # TODO: need to group by feature, and get fields with rules
-    # TODO: build dictionary
-    #  {feature: [[field1: xxx, exp1: xxx], [field2: xxx, exp2: xxx]]}
-
     # agg_field_table_info = dict.fromkeys([x[0] for x in attr_rule_table_info],[])
     agg_field_table_info = {x[0]: [] for x in attr_rule_table_info}
 
-    for table in attr_rule_table_info[:10]:
+    for table in attr_rule_table_info:
 
         table_name = table[0]
         rule_name = table[1]
