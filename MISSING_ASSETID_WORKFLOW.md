@@ -2,7 +2,7 @@
 
 **Task:** TASK0316399 (parent) / TASK0320812, TASK0319535 (related)
 **Created:** 2026-05-15
-**Priority:** High | **Total Time Estimate:** 8 hrs (7 known FCs: ~5–6 hrs | TBD FCs + overhead: ~2–3 hrs)
+**Priority:** High | **Total Time Estimate:** ~4–5 hrs (7 known FCs: ~3–3.5 hrs | TBD FCs + overhead: ~1–1.5 hrs)
 
 ---
 
@@ -31,13 +31,13 @@ Two attribute rule scenarios exist. Confirm which applies before starting work.
 
 | Feature Class | Missing ASSETIDs | Rule Type | Source Field for ASSETID | Associated Services | Est. Time |
 |---|---|---|---|---|---|
-| `AST_tree` | 83,250 | **Type A** — rules already unified | Primary ID field | CityWorks | ~60–70 min |
-| `TRN_transit_shelter` | 512 | **Type B** — SHELTERID must equal ASSETID | `SHELTERID` | Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter | ~40–60 min |
-| `TRN_sectrav` | 201 | **Type A** — rules already unified | `TR_ID` | AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance | ~25–35 min |
-| `AST_SIGN` | 33 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, HRMBaseData, Shared All, ParksRec Mobile | ~40–55 min |
-| `TRN_traffic_calming_infra` | 25 | **Type B** — primary ID must equal ASSETID | Primary ID field | AGS Geotab View, AGS Traffic Zone WGS84 | ~40–55 min |
-| `LND_hrm_parcel` | 3 | **Type A** — rules already unified | Primary ID field | DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84 | ~25–30 min |
-| `AST_parking_pay_station` | 2 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, Cityworks Map, DDE, HRMBaseData | ~40–55 min |
+| `AST_tree` | 83,250 | **Type A** — rules already unified | Primary ID field | CityWorks | ~56–61 min |
+| `TRN_transit_shelter` | 512 | **Type B** — SHELTERID must equal ASSETID | `SHELTERID` | Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter | ~25–29 min |
+| `TRN_sectrav` | 201 | **Type A** — rules already unified | `TR_ID` | AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance | ~19–22 min |
+| `AST_SIGN` | 33 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, HRMBaseData, Shared All, ParksRec Mobile | ~23–25 min |
+| `TRN_traffic_calming_infra` | 25 | **Type B** — primary ID must equal ASSETID | Primary ID field | AGS Geotab View, AGS Traffic Zone WGS84 | ~23–25 min |
+| `LND_hrm_parcel` | 3 | **Type A** — rules already unified | Primary ID field | DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84 | ~18–20 min |
+| `AST_parking_pay_station` | 2 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, Cityworks Map, DDE, HRMBaseData | ~23–25 min |
 | `Streets` | TBD | TBD (see TASK0320812) | TBD | TBD | TBD |
 | `AST_tree_vaults` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
 | `LND_outdoor_req_equip_point` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
@@ -58,20 +58,20 @@ Two attribute rule scenarios exist. Confirm which applies before starting work.
 
 The table below summarises the estimated time per feature class. Service stop/start is ~2 min regardless of service count. Field calc time scales with record count. Type B rule work is split into Arcade editing (human analysis) and the mechanical import + test.
 
-| Feature Class | Step 1 Backup | Steps 2+9 Services | Steps 3–5 Tracking+Rules | Step 6 Field Calc | Step 7a Edit Arcade (Type B only) | Step 7b Rule Import+Test | Step 10 Verify | **Total** |
+| Feature Class | Step 1 Backup | Steps 2+9 Services | Steps 3–5 Tracking+Rules | Step 6 Field Calc | Step 7a Edit Arcade (Type B only) | Step 7b Rule Import | Step 10 Verify | **Total** |
 |---|---|---|---|---|---|---|---|---|
-| `AST_tree` | 10–15 min | 4 min | 5 min | ~30 min | N/A (Type A) | 5 min | 5–10 min | **~59–69 min** |
-| `TRN_transit_shelter` | 2–3 min | 4 min | 5 min | 2–5 min | 15–20 min | 5–10 min | 5–10 min | **~38–57 min** |
-| `TRN_sectrav` | 2–3 min | 4 min | 5 min | 1–3 min | N/A (Type A) | 5 min | 5–10 min | **~22–30 min** |
-| `AST_SIGN` | 2–3 min | 4 min | 5 min | < 1 min | 15–20 min | 5–10 min | 5–10 min | **~37–53 min** |
-| `TRN_traffic_calming_infra` | 2–3 min | 4 min | 5 min | < 1 min | 15–20 min | 5–10 min | 5–10 min | **~37–53 min** |
-| `LND_hrm_parcel` | 2–3 min | 4 min | 5 min | < 1 min | N/A (Type A) | 5 min | 5–10 min | **~21–28 min** |
-| `AST_parking_pay_station` | 2–3 min | 4 min | 5 min | < 1 min | 15–20 min | 5–10 min | 5–10 min | **~37–53 min** |
-| **Known FC Subtotal** | | | | | | | | **~251–343 min (~4–5.5 hrs)** |
-| TBD FCs + overhead | | | | | | | | ~1.5–2.5 hrs |
-| **Grand Total** | | | | | | | | **~6–8 hrs** |
+| `AST_tree` | 10–15 min | 4 min | 5 min | ~30 min | N/A (Type A) | 2 min | 5 min | **~56–61 min** |
+| `TRN_transit_shelter` | 2–3 min | 4 min | 5 min | 2–5 min | 5 min | 2 min | 5 min | **~25–29 min** |
+| `TRN_sectrav` | 2–3 min | 4 min | 5 min | 1–3 min | N/A (Type A) | 2 min | 5 min | **~19–22 min** |
+| `AST_SIGN` | 2–3 min | 4 min | 5 min | < 1 min | 5 min | 2 min | 5 min | **~23–25 min** |
+| `TRN_traffic_calming_infra` | 2–3 min | 4 min | 5 min | < 1 min | 5 min | 2 min | 5 min | **~23–25 min** |
+| `LND_hrm_parcel` | 2–3 min | 4 min | 5 min | < 1 min | N/A (Type A) | 2 min | 5 min | **~18–20 min** |
+| `AST_parking_pay_station` | 2–3 min | 4 min | 5 min | < 1 min | 5 min | 2 min | 5 min | **~23–25 min** |
+| **Known FC Subtotal** | | | | | | | | **~187–207 min (~3–3.5 hrs)** |
+| TBD FCs + overhead | | | | | | | | ~1–1.5 hrs |
+| **Grand Total** | | | | | | | | **~4–5 hrs** |
 
-> Times assume a single operator working sequentially. The bottleneck for Type A is the field calculation (AST_tree). The bottleneck for Type B is reviewing and editing the Arcade expression — not the import tool itself.
+> Times assume a single operator working sequentially. The main time driver is AST_tree's field calculation (~30 min on 83k rows over SDE). All other feature classes are under 30 min each.
 
 ---
 
@@ -267,7 +267,7 @@ The exported CSV rules can be re-imported as-is. No Arcade editing needed.
 4. Run the tool.
 5. Verify in feature class properties that rules are listed and active.
 
-#### Type B — Step 7a: Edit Arcade Expression `⏱ 15–20 min`
+#### Type B — Step 7a: Edit Arcade Expression `⏱ ~5 min`
 
 The ASSETID rule must be updated so it copies from the primary ID field rather than its own separate sequence. This is the human analysis portion — read the exported CSV, understand the current rule structure, and write the corrected expression before importing.
 
@@ -292,12 +292,10 @@ The ASSETID rule must be updated so it copies from the primary ID field rather t
 
 4. Save the updated CSV.
 
-#### Type B — Step 7b: Import and Test `⏱ 5–10 min`
+#### Type B — Step 7b: Import `⏱ ~2 min`
 
 1. Open the **Import Attribute Rules** tool and import the updated CSV.
 2. Verify in feature class properties that rules are listed and active.
-3. Insert a single test feature in a child version and confirm ASSETID equals the primary ID on insert.
-4. Reconcile and discard the test version without posting.
 
 ---
 
@@ -342,31 +340,36 @@ arcpy.EnableEditorTracking_management(
 
 ---
 
-### Step 10 — Verification and Sign-Off `⏱ 5–15 min`
+### Step 10 — Verification and Sign-Off `⏱ ~5 min`
 
-1. Re-run the pre-work count query — confirm `missing_assetid_count = 0`.
-2. Spot-check 5–10 records and compare ASSETID against the primary ID field.
-3. For Type B feature classes, insert a test feature in a child version, confirm ASSETID is auto-populated correctly, then discard without posting.
-4. Confirm no unexpected NULL or duplicate ASSETIDs have been introduced:
+**All feature classes — confirm the backfill was correct:**
+
+- [ ] Re-run the pre-work count query and confirm `missing_assetid_count = 0`.
+- [ ] Confirm no duplicates were introduced:
 
 ```sql
--- Check for duplicates
+-- Remaining NULLs (should be 0)
+SELECT COUNT(*) AS still_null
+FROM [GISRW01].[sdeadm].[<FEATURE_CLASS_NAME>]
+WHERE ASSETID IS NULL OR ASSETID = '';
+
+-- Duplicate ASSETIDs (should return no rows)
 SELECT ASSETID, COUNT(*) AS cnt
 FROM [GISRW01].[sdeadm].[<FEATURE_CLASS_NAME>]
 GROUP BY ASSETID
 HAVING COUNT(*) > 1;
-
--- Check for remaining NULLs
-SELECT COUNT(*) AS still_null
-FROM [GISRW01].[sdeadm].[<FEATURE_CLASS_NAME>]
-WHERE ASSETID IS NULL OR ASSETID = '';
 ```
 
-5. Update the ticket status to **Complete** and note:
-   - Date/time of changes
-   - Number of records updated
-   - Name of backup copy created
-   - Any deviations from this workflow
+- [ ] Spot-check 3–5 records and confirm ASSETID matches the primary ID field.
+
+**Type B only — confirm the updated attribute rule works for future inserts:**
+
+- [ ] Insert a single test feature in a child version and confirm ASSETID is auto-populated and equals the primary ID field.
+- [ ] Discard the test version without posting.
+
+**All feature classes — close out:**
+
+- [ ] Update the ticket status to **Complete** and note: date/time, number of records updated, backup copy name, and any deviations from this workflow.
 
 ---
 
