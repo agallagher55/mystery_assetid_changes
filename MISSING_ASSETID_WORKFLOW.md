@@ -2,7 +2,7 @@
 
 **Task:** TASK0316399 (parent) / TASK0320812, TASK0319535 (related)
 **Created:** 2026-05-15
-**Priority:** High | **Time Estimate:** 8 hrs
+**Priority:** High | **Total Time Estimate:** 8 hrs (7 known FCs: ~5–6 hrs | TBD FCs + overhead: ~2–3 hrs)
 
 ---
 
@@ -29,26 +29,49 @@
 
 Two attribute rule scenarios exist. Confirm which applies before starting work.
 
-| Feature Class | Missing ASSETIDs | Rule Type | Source Field for ASSETID | Associated Services |
-|---|---|---|---|---|
-| `AST_tree` | 83,250 | **Type A** — rules already unified | Primary ID field | CityWorks |
-| `TRN_sectrav` | 201 | **Type A** — rules already unified | `TR_ID` | AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance |
-| `LND_hrm_parcel` | 3 | **Type A** — rules already unified | Primary ID field | DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84 |
-| `TRN_transit_shelter` | 512 | **Type B** — SHELTERID must equal ASSETID | `SHELTERID` | Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter |
-| `AST_SIGN` | 33 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, HRMBaseData, Shared All, ParksRec Mobile |
-| `TRN_traffic_calming_infra` | 25 | **Type B** — primary ID must equal ASSETID | Primary ID field | AGS Geotab View, AGS Traffic Zone WGS84 |
-| `AST_parking_pay_station` | 2 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, Cityworks Map, DDE, HRMBaseData |
-| `Streets` | TBD | TBD (see TASK0320812) | TBD | TBD |
-| `AST_tree_vaults` | TBD | TBD (see TASK0319535) | TBD | TBD |
-| `LND_outdoor_req_equip_point` | TBD | TBD (see TASK0319535) | TBD | TBD |
-| `TRN_bus_pad` | TBD | TBD (see TASK0319535) | TBD | TBD |
-| `BLD_electrical` | TBD | TBD (see TASK0319535) | TBD | TBD |
-| `BLD_exterior` | TBD | TBD (see TASK0319535) | TBD | TBD |
-| `BLD_mechanical` | TBD | TBD (see TASK0319535) | TBD | TBD |
+| Feature Class | Missing ASSETIDs | Rule Type | Source Field for ASSETID | Associated Services | Est. Time |
+|---|---|---|---|---|---|
+| `AST_tree` | 83,250 | **Type A** — rules already unified | Primary ID field | CityWorks | ~45–60 min |
+| `TRN_transit_shelter` | 512 | **Type B** — SHELTERID must equal ASSETID | `SHELTERID` | Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter | ~50–65 min |
+| `TRN_sectrav` | 201 | **Type A** — rules already unified | `TR_ID` | AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance | ~40–55 min |
+| `AST_SIGN` | 33 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, HRMBaseData, Shared All, ParksRec Mobile | ~40–55 min |
+| `TRN_traffic_calming_infra` | 25 | **Type B** — primary ID must equal ASSETID | Primary ID field | AGS Geotab View, AGS Traffic Zone WGS84 | ~35–45 min |
+| `LND_hrm_parcel` | 3 | **Type A** — rules already unified | Primary ID field | DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84 | ~30–40 min |
+| `AST_parking_pay_station` | 2 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, Cityworks Map, DDE, HRMBaseData | ~35–45 min |
+| `Streets` | TBD | TBD (see TASK0320812) | TBD | TBD | TBD |
+| `AST_tree_vaults` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
+| `LND_outdoor_req_equip_point` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
+| `TRN_bus_pad` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
+| `BLD_electrical` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
+| `BLD_exterior` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
+| `BLD_mechanical` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
+
+> **Ordering note:** Feature classes are sorted by estimated effort/impact, not alphabetically. Work AST_tree first (largest volume) and AST_parking_pay_station last.
 
 > **Type A** — Attribute rules already use a single unified sequence. ASSETID just needs to be backfilled from the existing primary ID field. No rule changes required.
 >
 > **Type B** — The sequence that generates the primary ID and the sequence that generates ASSETID are currently different. Both the backfill calculation AND an attribute rule update are required so future inserts stay in sync.
+
+---
+
+## Time Estimate Breakdown
+
+The table below summarises the estimated time per feature class based on record volume, rule type, and number of services. Steps 2 and 9 (service stop/start) scale with the number of services; Steps 6 and 7 scale with record count and rule complexity.
+
+| Feature Class | Step 1 Backup | Steps 2+9 Services | Steps 3–5 Tracking+Rules | Step 6 Field Calc | Step 7 Rule Import | Step 10 Verify | **Total** |
+|---|---|---|---|---|---|---|---|
+| `AST_tree` | 10–15 min | 5 min (1 svc) | 5 min | 15–30 min | 5 min | 5–10 min | **45–65 min** |
+| `TRN_transit_shelter` | 2–3 min | 10 min (3 svcs) | 5 min | 2–5 min | 20–30 min | 5–10 min | **44–63 min** |
+| `TRN_sectrav` | 2–3 min | 15 min (6 svcs) | 5 min | 1–3 min | 5 min | 5–10 min | **33–46 min** |
+| `AST_SIGN` | 2–3 min | 10 min (4 svcs) | 5 min | < 1 min | 20–30 min | 5–10 min | **43–59 min** |
+| `TRN_traffic_calming_infra` | 2–3 min | 5 min (2 svcs) | 5 min | < 1 min | 20–30 min | 5–10 min | **38–54 min** |
+| `LND_hrm_parcel` | 2–3 min | 10 min (5 svcs) | 5 min | < 1 min | 5 min | 5–10 min | **27–39 min** |
+| `AST_parking_pay_station` | 2–3 min | 10 min (4 svcs) | 5 min | < 1 min | 20–30 min | 5–10 min | **43–59 min** |
+| **Known FC Subtotal** | | | | | | | **~273–385 min (~4.5–6.5 hrs)** |
+| TBD FCs + overhead | | | | | | | ~1.5–2 hrs |
+| **Grand Total** | | | | | | | **~6–8.5 hrs** |
+
+> Times assume a single operator working sequentially. Parallel preparation (e.g., reviewing attribute rules for the next FC while services restart for the current one) could reduce total time by 30–60 min.
 
 ---
 
@@ -82,7 +105,7 @@ Work through each feature class individually. Complete all steps for one feature
 
 ---
 
-### Step 1 — Create a Backup Copy of the Feature Class
+### Step 1 — Create a Backup Copy of the Feature Class `⏱ 5–15 min`
 
 **Tool:** ArcGIS Pro (Geoprocessing) or ArcCatalog
 
@@ -99,7 +122,7 @@ Work through each feature class individually. Complete all steps for one feature
 
 ---
 
-### Step 2 — Stop Associated Services
+### Step 2 — Stop Associated Services `⏱ 5–15 min`
 
 **Tool:** ArcGIS Server Manager
 
@@ -113,7 +136,7 @@ Work through each feature class individually. Complete all steps for one feature
 
 ---
 
-### Step 3 — Disable Editor Tracking
+### Step 3 — Disable Editor Tracking `⏱ 1–2 min`
 
 **Tool:** ArcGIS Pro (Feature Class Properties) or Python/ArcPy
 
@@ -135,7 +158,7 @@ arcpy.DisableEditorTracking_management(fc)
 
 ---
 
-### Step 4 — Export Existing Attribute Rules
+### Step 4 — Export Existing Attribute Rules `⏱ 1–2 min`
 
 **Tool:** ArcGIS Pro (Geoprocessing) or ArcPy
 
@@ -152,7 +175,7 @@ arcpy.DisableEditorTracking_management(fc)
 
 ---
 
-### Step 5 — Delete Attribute Rules
+### Step 5 — Delete Attribute Rules `⏱ 1–2 min`
 
 **Tool:** ArcGIS Pro (Geoprocessing) or ArcPy
 
@@ -174,11 +197,21 @@ arcpy.DeleteAttributeRules_management(fc, rules)
 
 ---
 
-### Step 6 — Run Field Calculation to Fix ASSETIDs
+### Step 6 — Run Field Calculation to Fix ASSETIDs `⏱ 1–30 min (varies by record count)`
 
 **Tool:** ArcGIS Pro (Field Calculator) or ArcPy Update Cursor
 
-This step differs slightly between Type A and Type B.
+This step differs slightly between Type A and Type B. Field calculation time scales with record count:
+
+| Feature Class | Records to Update | Estimated Calculation Time |
+|---|---|---|
+| `AST_tree` | 83,250 | 15–30 min |
+| `TRN_transit_shelter` | 512 | 2–5 min |
+| `TRN_sectrav` | 201 | 1–3 min |
+| `AST_SIGN` | 33 | < 1 min |
+| `TRN_traffic_calming_infra` | 25 | < 1 min |
+| `LND_hrm_parcel` | 3 | < 1 min |
+| `AST_parking_pay_station` | 2 | < 1 min |
 
 #### Type A — Rules Already Unified (AST_tree, TRN_sectrav, LND_hrm_parcel)
 
@@ -222,7 +255,7 @@ After running, execute the pre-work verification query again and confirm the NUL
 
 ---
 
-### Step 7 — Update and Re-Import Attribute Rules
+### Step 7 — Update and Re-Import Attribute Rules `⏱ Type A: 5 min | Type B: 20–30 min`
 
 #### Type A — No Rule Changes Required
 
@@ -264,7 +297,7 @@ The ASSETID rule must be updated so it copies from the primary ID sequence (not 
 
 ---
 
-### Step 8 — Re-Enable Editor Tracking
+### Step 8 — Re-Enable Editor Tracking `⏱ 1–2 min`
 
 **Tool:** ArcGIS Pro or ArcPy
 
@@ -292,7 +325,7 @@ arcpy.EnableEditorTracking_management(
 
 ---
 
-### Step 9 — Restart Associated Services
+### Step 9 — Restart Associated Services `⏱ 5–15 min`
 
 **Tool:** ArcGIS Server Manager
 
@@ -305,7 +338,7 @@ arcpy.EnableEditorTracking_management(
 
 ---
 
-### Step 10 — Verification and Sign-Off
+### Step 10 — Verification and Sign-Off `⏱ 5–15 min`
 
 1. Re-run the pre-work count query — confirm `missing_assetid_count = 0`.
 2. Spot-check 5–10 records and compare ASSETID against the primary ID field.
