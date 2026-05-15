@@ -31,13 +31,13 @@ Two attribute rule scenarios exist. Confirm which applies before starting work.
 
 | Feature Class | Missing ASSETIDs | Rule Type | Source Field for ASSETID | Associated Services | Est. Time |
 |---|---|---|---|---|---|
-| `AST_tree` | 83,250 | **Type A** — rules already unified | Primary ID field | CityWorks | ~45–60 min |
-| `TRN_transit_shelter` | 512 | **Type B** — SHELTERID must equal ASSETID | `SHELTERID` | Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter | ~50–65 min |
-| `TRN_sectrav` | 201 | **Type A** — rules already unified | `TR_ID` | AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance | ~40–55 min |
+| `AST_tree` | 83,250 | **Type A** — rules already unified | Primary ID field | CityWorks | ~60–70 min |
+| `TRN_transit_shelter` | 512 | **Type B** — SHELTERID must equal ASSETID | `SHELTERID` | Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter | ~40–60 min |
+| `TRN_sectrav` | 201 | **Type A** — rules already unified | `TR_ID` | AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance | ~25–35 min |
 | `AST_SIGN` | 33 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, HRMBaseData, Shared All, ParksRec Mobile | ~40–55 min |
-| `TRN_traffic_calming_infra` | 25 | **Type B** — primary ID must equal ASSETID | Primary ID field | AGS Geotab View, AGS Traffic Zone WGS84 | ~35–45 min |
-| `LND_hrm_parcel` | 3 | **Type A** — rules already unified | Primary ID field | DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84 | ~30–40 min |
-| `AST_parking_pay_station` | 2 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, Cityworks Map, DDE, HRMBaseData | ~35–45 min |
+| `TRN_traffic_calming_infra` | 25 | **Type B** — primary ID must equal ASSETID | Primary ID field | AGS Geotab View, AGS Traffic Zone WGS84 | ~40–55 min |
+| `LND_hrm_parcel` | 3 | **Type A** — rules already unified | Primary ID field | DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84 | ~25–30 min |
+| `AST_parking_pay_station` | 2 | **Type B** — primary ID must equal ASSETID | Primary ID field | Cityworks Assets, Cityworks Map, DDE, HRMBaseData | ~40–55 min |
 | `Streets` | TBD | TBD (see TASK0320812) | TBD | TBD | TBD |
 | `AST_tree_vaults` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
 | `LND_outdoor_req_equip_point` | TBD | TBD (see TASK0319535) | TBD | TBD | TBD |
@@ -56,22 +56,22 @@ Two attribute rule scenarios exist. Confirm which applies before starting work.
 
 ## Time Estimate Breakdown
 
-The table below summarises the estimated time per feature class based on record volume, rule type, and number of services. Steps 2 and 9 (service stop/start) scale with the number of services; Steps 6 and 7 scale with record count and rule complexity.
+The table below summarises the estimated time per feature class. Service stop/start is ~2 min regardless of service count. Field calc time scales with record count. Type B rule work is split into Arcade editing (human analysis) and the mechanical import + test.
 
-| Feature Class | Step 1 Backup | Steps 2+9 Services | Steps 3–5 Tracking+Rules | Step 6 Field Calc | Step 7 Rule Import | Step 10 Verify | **Total** |
-|---|---|---|---|---|---|---|---|
-| `AST_tree` | 10–15 min | 5 min (1 svc) | 5 min | 15–30 min | 5 min | 5–10 min | **45–65 min** |
-| `TRN_transit_shelter` | 2–3 min | 10 min (3 svcs) | 5 min | 2–5 min | 20–30 min | 5–10 min | **44–63 min** |
-| `TRN_sectrav` | 2–3 min | 15 min (6 svcs) | 5 min | 1–3 min | 5 min | 5–10 min | **33–46 min** |
-| `AST_SIGN` | 2–3 min | 10 min (4 svcs) | 5 min | < 1 min | 20–30 min | 5–10 min | **43–59 min** |
-| `TRN_traffic_calming_infra` | 2–3 min | 5 min (2 svcs) | 5 min | < 1 min | 20–30 min | 5–10 min | **38–54 min** |
-| `LND_hrm_parcel` | 2–3 min | 10 min (5 svcs) | 5 min | < 1 min | 5 min | 5–10 min | **27–39 min** |
-| `AST_parking_pay_station` | 2–3 min | 10 min (4 svcs) | 5 min | < 1 min | 20–30 min | 5–10 min | **43–59 min** |
-| **Known FC Subtotal** | | | | | | | **~273–385 min (~4.5–6.5 hrs)** |
-| TBD FCs + overhead | | | | | | | ~1.5–2 hrs |
-| **Grand Total** | | | | | | | **~6–8.5 hrs** |
+| Feature Class | Step 1 Backup | Steps 2+9 Services | Steps 3–5 Tracking+Rules | Step 6 Field Calc | Step 7a Edit Arcade (Type B only) | Step 7b Rule Import+Test | Step 10 Verify | **Total** |
+|---|---|---|---|---|---|---|---|---|
+| `AST_tree` | 10–15 min | 4 min | 5 min | ~30 min | N/A (Type A) | 5 min | 5–10 min | **~59–69 min** |
+| `TRN_transit_shelter` | 2–3 min | 4 min | 5 min | 2–5 min | 15–20 min | 5–10 min | 5–10 min | **~38–57 min** |
+| `TRN_sectrav` | 2–3 min | 4 min | 5 min | 1–3 min | N/A (Type A) | 5 min | 5–10 min | **~22–30 min** |
+| `AST_SIGN` | 2–3 min | 4 min | 5 min | < 1 min | 15–20 min | 5–10 min | 5–10 min | **~37–53 min** |
+| `TRN_traffic_calming_infra` | 2–3 min | 4 min | 5 min | < 1 min | 15–20 min | 5–10 min | 5–10 min | **~37–53 min** |
+| `LND_hrm_parcel` | 2–3 min | 4 min | 5 min | < 1 min | N/A (Type A) | 5 min | 5–10 min | **~21–28 min** |
+| `AST_parking_pay_station` | 2–3 min | 4 min | 5 min | < 1 min | 15–20 min | 5–10 min | 5–10 min | **~37–53 min** |
+| **Known FC Subtotal** | | | | | | | | **~251–343 min (~4–5.5 hrs)** |
+| TBD FCs + overhead | | | | | | | | ~1.5–2.5 hrs |
+| **Grand Total** | | | | | | | | **~6–8 hrs** |
 
-> Times assume a single operator working sequentially. Parallel preparation (e.g., reviewing attribute rules for the next FC while services restart for the current one) could reduce total time by 30–60 min.
+> Times assume a single operator working sequentially. The bottleneck for Type A is the field calculation (AST_tree). The bottleneck for Type B is reviewing and editing the Arcade expression — not the import tool itself.
 
 ---
 
@@ -122,7 +122,7 @@ Work through each feature class individually. Complete all steps for one feature
 
 ---
 
-### Step 2 — Stop Associated Services `⏱ 5–15 min`
+### Step 2 — Stop Associated Services `⏱ ~2 min`
 
 **Tool:** ArcGIS Server Manager
 
@@ -197,7 +197,7 @@ arcpy.DeleteAttributeRules_management(fc, rules)
 
 ---
 
-### Step 6 — Run Field Calculation to Fix ASSETIDs `⏱ 1–30 min (varies by record count)`
+### Step 6 — Run Field Calculation to Fix ASSETIDs `⏱ < 1–30 min (varies by record count)`
 
 **Tool:** ArcGIS Pro (Field Calculator) or ArcPy Update Cursor
 
@@ -205,7 +205,7 @@ This step differs slightly between Type A and Type B. Field calculation time sca
 
 | Feature Class | Records to Update | Estimated Calculation Time |
 |---|---|---|
-| `AST_tree` | 83,250 | 15–30 min |
+| `AST_tree` | 83,250 | ~30 min |
 | `TRN_transit_shelter` | 512 | 2–5 min |
 | `TRN_sectrav` | 201 | 1–3 min |
 | `AST_SIGN` | 33 | < 1 min |
@@ -255,11 +255,11 @@ After running, execute the pre-work verification query again and confirm the NUL
 
 ---
 
-### Step 7 — Update and Re-Import Attribute Rules `⏱ Type A: 5 min | Type B: 20–30 min`
+### Step 7 — Re-Import Attribute Rules
 
-#### Type A — No Rule Changes Required
+#### Type A — No Rule Changes Required `⏱ ~5 min`
 
-The exported CSV rules can be re-imported as-is.
+The exported CSV rules can be re-imported as-is. No Arcade editing needed.
 
 1. Open the **Import Attribute Rules** tool (Data Management > Attribute Rules > Import Attribute Rules).
 2. Set **Input Table** to the target feature class.
@@ -267,9 +267,9 @@ The exported CSV rules can be re-imported as-is.
 4. Run the tool.
 5. Verify in feature class properties that rules are listed and active.
 
-#### Type B — Rules Must Be Reconfigured Before Re-Import
+#### Type B — Step 7a: Edit Arcade Expression `⏱ 15–20 min`
 
-The ASSETID rule must be updated so it copies from the primary ID sequence (not a separate sequence) on insert.
+The ASSETID rule must be updated so it copies from the primary ID field rather than its own separate sequence. This is the human analysis portion — read the exported CSV, understand the current rule structure, and write the corrected expression before importing.
 
 1. Open the exported CSV in a text editor.
 2. Locate the attribute rule that populates `ASSETID`.
@@ -284,16 +284,20 @@ The ASSETID rule must be updated so it copies from the primary ID sequence (not 
 
    **After (copy from primary ID — correct):**
    ```arcade
-   // ASSETID copies the primary ID field value set by its own rule
-   // Use an Update rule or adjust the Insert rule order so primary ID is assigned first
+   // ASSETID copies the value already assigned to the primary ID field
    return $feature.SHELTERID;   // or TR_ID, SIGNID, etc. — confirm per feature class
    ```
 
-   > The exact Arcade fix depends on the current rule structure. Review the exported CSV carefully. Options include: (a) using a single sequence for both fields in one rule, (b) setting ASSETID = primary ID in a second calculation rule at Insert, or (c) using an Update rule that fires when the primary ID is set. Confirm the approach with the team before committing.
+   > Options include: (a) using a single sequence for both fields in one rule, (b) setting ASSETID = primary ID in a second calculation rule at Insert, or (c) an Update rule that fires when the primary ID is set. Confirm the approach with the team before committing.
 
 4. Save the updated CSV.
-5. Import using **Import Attribute Rules** as above.
-6. Test the rule by inserting a single test feature in a child version and confirming ASSETID = primary ID on insert. Reconcile and discard the test version without posting.
+
+#### Type B — Step 7b: Import and Test `⏱ 5–10 min`
+
+1. Open the **Import Attribute Rules** tool and import the updated CSV.
+2. Verify in feature class properties that rules are listed and active.
+3. Insert a single test feature in a child version and confirm ASSETID equals the primary ID on insert.
+4. Reconcile and discard the test version without posting.
 
 ---
 
@@ -325,7 +329,7 @@ arcpy.EnableEditorTracking_management(
 
 ---
 
-### Step 9 — Restart Associated Services `⏱ 5–15 min`
+### Step 9 — Restart Associated Services `⏱ ~2 min`
 
 **Tool:** ArcGIS Server Manager
 
