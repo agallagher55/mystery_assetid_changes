@@ -1,0 +1,157 @@
+Feature_Class,Missing_ASSETIDs,Rule_Type,Step_Num,Step_Name,Detail,Tool,Est_Time,Status,Notes
+AST_tree,83250,Type A,PRE-1,Confirm primary ID field name,Verify the source field that ASSETID should be copied from (check existing attribute rules or schema),ArcGIS Pro / SQL Server,5 min,,
+AST_tree,83250,Type A,PRE-2,Run pre-work NULL count query,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[AST_tree] WHERE ASSETID IS NULL OR ASSETID = ''; confirm count matches expected (83,250)",SQL Server,5 min,,
+AST_tree,83250,Type A,PRE-3,Confirm maintenance window with stakeholders,Notify stakeholders — services will be down during field calculation,Email / Teams,5 min,,
+AST_tree,83250,Type A,1,Create backup copy,"Copy Features → [GISRW01].[sdeadm].[AST_tree_BACKUP_20260515]; confirm row count matches source","ArcGIS Pro (Copy Features tool)",10–15 min,,Record backup name and row count in notes
+AST_tree,83250,Type A,2,Stop associated services,Stop services: CityWorks; confirm each shows Stopped before proceeding,ArcGIS Server Manager,2 min,,Note time stopped for change log
+AST_tree,83250,Type A,3,Disable editor tracking,"Feature class Properties → Editor Tracking tab → uncheck Enable Editor Tracking, or use DisableEditorTracking_management in ArcPy",ArcGIS Pro / ArcPy,1–2 min,,Prevents misleading audit trail on updated rows
+AST_tree,83250,Type A,4,Export attribute rules to CSV,"Export Attribute Rules tool → output: C:\GIS\AttributeRules\AST_tree_rules_export_20260515.csv; open and review rule names and Arcade expressions","ArcGIS Pro (Export Attribute Rules)",1–2 min,,Keep CSV as rollback point
+AST_tree,83250,Type A,5,Delete attribute rules,"Delete Attribute Rules tool; confirm no rules remain in feature class properties","ArcGIS Pro (Delete Attribute Rules)",1–2 min,,Rules must be removed before field calc to prevent Insert rules firing on updates
+AST_tree,83250,Type A,6,Run field calculation — set ASSETID = primary ID,"UpdateCursor with where_clause=""ASSETID IS NULL OR ASSETID = ''""; set ASSETID = primary ID field value for each NULL row",ArcPy UpdateCursor,~30 min,,~83250 records; bottleneck step for this FC
+AST_tree,83250,Type A,7,Import attribute rules (no changes needed),"Import Attribute Rules tool → use exported CSV from Step 4 as-is; verify rules are listed and active","ArcGIS Pro (Import Attribute Rules)",5 min,,Type A: no Arcade editing required
+AST_tree,83250,Type A,8,Re-enable editor tracking,"Feature class Properties → Editor Tracking tab → check Enable Editor Tracking; confirm correct fields mapped; or use EnableEditorTracking_management in ArcPy",ArcGIS Pro / ArcPy,1–2 min,,
+AST_tree,83250,Type A,9,Restart associated services,Start services: CityWorks; confirm each shows Started; open test map and confirm features visible,ArcGIS Server Manager,2 min,,Note time restarted for change log
+AST_tree,83250,Type A,10a,Re-run count query — confirm 0 NULLs,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[AST_tree] WHERE ASSETID IS NULL OR ASSETID = ''; must return 0",SQL Server,2 min,,
+AST_tree,83250,Type A,10b,Spot-check records,Manually compare ASSETID vs primary ID field for 5–10 records,ArcGIS Pro / SQL Server,3–5 min,,
+AST_tree,83250,Type A,10c,Check for duplicate ASSETIDs,"SELECT ASSETID, COUNT(*) FROM [GISRW01].[sdeadm].[AST_tree] GROUP BY ASSETID HAVING COUNT(*) > 1; result must be 0 rows",SQL Server,2 min,,
+AST_tree,83250,Type A,10d,Update ticket to Complete,"Record: date/time of changes, records updated (83250), backup copy name, any deviations",ServiceNow / ticketing system,2–3 min,,Ticket: TASK0316399 (parent) / TASK0319535 (related)
+TRN_transit_shelter,512,Type B,PRE-1,Confirm primary ID field name,"Verify SHELTERID is the source field for ASSETID; check existing attribute rules in exported CSV to understand current sequence names",ArcGIS Pro / SQL Server,5 min,,
+TRN_transit_shelter,512,Type B,PRE-2,Run pre-work NULL count query,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[TRN_transit_shelter] WHERE ASSETID IS NULL OR ASSETID = ''; confirm count matches expected (512)",SQL Server,5 min,,
+TRN_transit_shelter,512,Type B,PRE-3,Confirm maintenance window with stakeholders,"Notify stakeholders — services will be down; affected services: Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter",Email / Teams,5 min,,
+TRN_transit_shelter,512,Type B,1,Create backup copy,"Copy Features → [GISRW01].[sdeadm].[TRN_transit_shelter_BACKUP_20260515]; confirm row count","ArcGIS Pro (Copy Features tool)",2–3 min,,
+TRN_transit_shelter,512,Type B,2,Stop associated services,"Stop: Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter; confirm Stopped",ArcGIS Server Manager,2 min,,Note time stopped
+TRN_transit_shelter,512,Type B,3,Disable editor tracking,Disable via ArcGIS Pro Properties or DisableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+TRN_transit_shelter,512,Type B,4,Export attribute rules to CSV,"Export Attribute Rules → C:\GIS\AttributeRules\TRN_transit_shelter_rules_export_20260515.csv; open and review","ArcGIS Pro (Export Attribute Rules)",1–2 min,,Keep CSV as rollback point
+TRN_transit_shelter,512,Type B,5,Delete attribute rules,"Delete Attribute Rules; confirm no rules remain","ArcGIS Pro (Delete Attribute Rules)",1–2 min,,
+TRN_transit_shelter,512,Type B,6,Run field calculation — set ASSETID = SHELTERID,"UpdateCursor with where_clause=""ASSETID IS NULL OR ASSETID = ''""; set ASSETID = SHELTERID for each NULL row",ArcPy UpdateCursor,2–5 min,,512 records
+TRN_transit_shelter,512,Type B,7a,Edit Arcade expression in exported CSV,"Open CSV in text editor; locate ASSETID rule; change expression from its own sequence to: return $feature.SHELTERID; (or unified sequence approach — confirm with team first)",Text editor,15–20 min,,Human analysis step — confirm approach before committing
+TRN_transit_shelter,512,Type B,7b,Import updated attribute rules,"Import Attribute Rules → use updated CSV; verify rules listed and active","ArcGIS Pro (Import Attribute Rules)",5 min,,
+TRN_transit_shelter,512,Type B,7c,Test insert in child version,"Create a child version; insert a single test feature; confirm ASSETID auto-populates equal to SHELTERID; reconcile and DISCARD without posting",ArcGIS Pro (versioned edit session),5–10 min,,Do not post the test version
+TRN_transit_shelter,512,Type B,8,Re-enable editor tracking,Enable via ArcGIS Pro Properties or EnableEditorTracking_management; confirm correct fields mapped,ArcGIS Pro / ArcPy,1–2 min,,
+TRN_transit_shelter,512,Type B,9,Restart associated services,"Start: Cityworks, AGS Transit WGS84 (Bus/Transit Shelter), RoadOperation/Transit Shelter; confirm Started",ArcGIS Server Manager,2 min,,Note time restarted
+TRN_transit_shelter,512,Type B,10a,Re-run count query — confirm 0 NULLs,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[TRN_transit_shelter] WHERE ASSETID IS NULL OR ASSETID = ''; must return 0",SQL Server,2 min,,
+TRN_transit_shelter,512,Type B,10b,Spot-check records,Compare ASSETID vs SHELTERID for 5–10 records,ArcGIS Pro / SQL Server,3–5 min,,
+TRN_transit_shelter,512,Type B,10c,Check for duplicate ASSETIDs,"SELECT ASSETID, COUNT(*) FROM [GISRW01].[sdeadm].[TRN_transit_shelter] GROUP BY ASSETID HAVING COUNT(*) > 1",SQL Server,2 min,,
+TRN_transit_shelter,512,Type B,10d,Update ticket to Complete,"Record: date/time, 512 records updated, backup copy name, any deviations",ServiceNow / ticketing system,2–3 min,,Ticket: TASK0316399 (parent) / TASK0319535 (related)
+TRN_sectrav,201,Type A,PRE-1,Confirm primary ID field name,Source field is TR_ID (confirmed). Cross-reference Kirk's ID mapping table in Monthly Submission Comments - 20260227.xlsx before field calc — the 201 missing ASSETIDs likely include features from the 2026-01-08 delete+insert event,ArcGIS Pro / Excel,5 min,,See TROUBLESHOOTING.md Section 8 for delete+insert context
+TRN_sectrav,201,Type A,PRE-2,Run pre-work NULL count query,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[TRN_sectrav] WHERE ASSETID IS NULL OR ASSETID = ''; confirm count matches expected (201)",SQL Server,5 min,,Use _evw view for Default version: sdeadm.TRN_SECTRAV_evw
+TRN_sectrav,201,Type A,PRE-3,Confirm maintenance window with stakeholders,"Notify stakeholders — affected services: AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance",Email / Teams,5 min,,
+TRN_sectrav,201,Type A,1,Create backup copy,"Copy Features → [GISRW01].[sdeadm].[TRN_sectrav_BACKUP_20260515]; confirm row count","ArcGIS Pro (Copy Features tool)",2–3 min,,
+TRN_sectrav,201,Type A,2,Stop associated services,"Stop: AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance; confirm Stopped",ArcGIS Server Manager,2 min,,Note time stopped
+TRN_sectrav,201,Type A,3,Disable editor tracking,Disable via ArcGIS Pro Properties or DisableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+TRN_sectrav,201,Type A,4,Export attribute rules to CSV,"Export Attribute Rules → C:\GIS\AttributeRules\TRN_sectrav_rules_export_20260515.csv; review TR_ID and ASSETID rule expressions","ArcGIS Pro (Export Attribute Rules)",1–2 min,,
+TRN_sectrav,201,Type A,5,Delete attribute rules,"Delete Attribute Rules; confirm no rules remain","ArcGIS Pro (Delete Attribute Rules)",1–2 min,,Both TR_ID and ASSETID Insert rules must be removed
+TRN_sectrav,201,Type A,6,Run field calculation — set ASSETID = TR_ID,"UpdateCursor with where_clause=""ASSETID IS NULL OR ASSETID = ''""; set ASSETID = TR_ID for each NULL row; do NOT touch TR_ID itself",ArcPy UpdateCursor,1–3 min,,201 records
+TRN_sectrav,201,Type A,7,Import attribute rules (no changes needed),"Import Attribute Rules → use exported CSV from Step 4 as-is; verify both TR_ID and ASSETID rules are active","ArcGIS Pro (Import Attribute Rules)",5 min,,
+TRN_sectrav,201,Type A,8,Re-enable editor tracking,Enable via ArcGIS Pro Properties or EnableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+TRN_sectrav,201,Type A,9,Restart associated services,"Start: AGS Land Sectrav WGS84, Cityworks Assets, Cityworks Map, DDE, HRMBaseData, WinterMaintenance; confirm Started",ArcGIS Server Manager,2 min,,Note time restarted; spot-check Cityworks re-linkage after restart
+TRN_sectrav,201,Type A,10a,Re-run count query — confirm 0 NULLs,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[TRN_sectrav] WHERE ASSETID IS NULL OR ASSETID = ''; must return 0",SQL Server,2 min,,
+TRN_sectrav,201,Type A,10b,Spot-check records,Compare ASSETID vs TR_ID for 5–10 records including known affected IDs from Kirk's mapping table,ArcGIS Pro / SQL Server,3–5 min,,
+TRN_sectrav,201,Type A,10c,Check for duplicate ASSETIDs,"SELECT ASSETID, COUNT(*) FROM [GISRW01].[sdeadm].[TRN_sectrav] GROUP BY ASSETID HAVING COUNT(*) > 1",SQL Server,2 min,,
+TRN_sectrav,201,Type A,10d,Confirm Cityworks re-linkage,Spot-check 2–3 known-affected assets in Cityworks and confirm their inspection/work order history is visible again,Cityworks,5 min,,Cityworks holds original TR1xxxxxx IDs — no Cityworks-side update needed; re-link is automatic once ASSETID is restored
+TRN_sectrav,201,Type A,10e,Update ticket to Complete,"Record: date/time, 201 records updated, backup copy name, any deviations",ServiceNow / ticketing system,2–3 min,,Ticket: TASK0316399 (parent); cross-reference TROUBLESHOOTING.md Section 8
+AST_SIGN,33,Type B,PRE-1,Confirm primary ID field name,Identify the primary ID field (e.g. SIGNID) that ASSETID should mirror; check attribute rules or schema,ArcGIS Pro / SQL Server,5 min,,
+AST_SIGN,33,Type B,PRE-2,Run pre-work NULL count query,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[AST_SIGN] WHERE ASSETID IS NULL OR ASSETID = ''; confirm count matches expected (33)",SQL Server,5 min,,
+AST_SIGN,33,Type B,PRE-3,Confirm maintenance window with stakeholders,"Notify stakeholders — affected services: Cityworks Assets, HRMBaseData, Shared All, ParksRec Mobile",Email / Teams,5 min,,
+AST_SIGN,33,Type B,1,Create backup copy,"Copy Features → [GISRW01].[sdeadm].[AST_SIGN_BACKUP_20260515]; confirm row count","ArcGIS Pro (Copy Features tool)",2–3 min,,
+AST_SIGN,33,Type B,2,Stop associated services,"Stop: Cityworks Assets, HRMBaseData, Shared All, ParksRec Mobile; confirm Stopped",ArcGIS Server Manager,2 min,,Note time stopped
+AST_SIGN,33,Type B,3,Disable editor tracking,Disable via ArcGIS Pro Properties or DisableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+AST_SIGN,33,Type B,4,Export attribute rules to CSV,"Export Attribute Rules → C:\GIS\AttributeRules\AST_SIGN_rules_export_20260515.csv; review","ArcGIS Pro (Export Attribute Rules)",1–2 min,,
+AST_SIGN,33,Type B,5,Delete attribute rules,"Delete Attribute Rules; confirm no rules remain","ArcGIS Pro (Delete Attribute Rules)",1–2 min,,
+AST_SIGN,33,Type B,6,Run field calculation — set ASSETID = primary ID field,"UpdateCursor with where_clause=""ASSETID IS NULL OR ASSETID = ''""; set ASSETID = primary ID field value",ArcPy UpdateCursor,< 1 min,,33 records
+AST_SIGN,33,Type B,7a,Edit Arcade expression in exported CSV,Update ASSETID rule expression to copy from primary ID field instead of its own sequence; confirm approach with team,Text editor,15–20 min,,Human analysis step
+AST_SIGN,33,Type B,7b,Import updated attribute rules,"Import Attribute Rules → updated CSV; verify rules active","ArcGIS Pro (Import Attribute Rules)",5 min,,
+AST_SIGN,33,Type B,7c,Test insert in child version,"Insert a test feature; confirm ASSETID = primary ID on insert; discard without posting",ArcGIS Pro (versioned edit),5–10 min,,
+AST_SIGN,33,Type B,8,Re-enable editor tracking,Enable via ArcGIS Pro Properties or EnableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+AST_SIGN,33,Type B,9,Restart associated services,"Start: Cityworks Assets, HRMBaseData, Shared All, ParksRec Mobile; confirm Started",ArcGIS Server Manager,2 min,,Note time restarted
+AST_SIGN,33,Type B,10a,Re-run count query — confirm 0 NULLs,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[AST_SIGN] WHERE ASSETID IS NULL OR ASSETID = ''; must return 0",SQL Server,2 min,,
+AST_SIGN,33,Type B,10b,Spot-check records,Compare ASSETID vs primary ID field for 5–10 records,ArcGIS Pro / SQL Server,3–5 min,,
+AST_SIGN,33,Type B,10c,Check for duplicate ASSETIDs,"SELECT ASSETID, COUNT(*) FROM [GISRW01].[sdeadm].[AST_SIGN] GROUP BY ASSETID HAVING COUNT(*) > 1",SQL Server,2 min,,
+AST_SIGN,33,Type B,10d,Update ticket to Complete,"Record: date/time, 33 records updated, backup copy name, any deviations",ServiceNow / ticketing system,2–3 min,,Ticket: TASK0316399 (parent) / TASK0319535 (related)
+TRN_traffic_calming_infra,25,Type B,PRE-1,Confirm primary ID field name,Identify the primary ID field; check attribute rules or schema,ArcGIS Pro / SQL Server,5 min,,
+TRN_traffic_calming_infra,25,Type B,PRE-2,Run pre-work NULL count query,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[TRN_traffic_calming_infra] WHERE ASSETID IS NULL OR ASSETID = ''; confirm count matches expected (25)",SQL Server,5 min,,
+TRN_traffic_calming_infra,25,Type B,PRE-3,Confirm maintenance window with stakeholders,"Notify stakeholders — affected services: AGS Geotab View, AGS Traffic Zone WGS84",Email / Teams,5 min,,
+TRN_traffic_calming_infra,25,Type B,1,Create backup copy,"Copy Features → [GISRW01].[sdeadm].[TRN_traffic_calming_infra_BACKUP_20260515]; confirm row count","ArcGIS Pro (Copy Features tool)",2–3 min,,
+TRN_traffic_calming_infra,25,Type B,2,Stop associated services,"Stop: AGS Geotab View, AGS Traffic Zone WGS84; confirm Stopped",ArcGIS Server Manager,2 min,,Note time stopped
+TRN_traffic_calming_infra,25,Type B,3,Disable editor tracking,Disable via ArcGIS Pro Properties or DisableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+TRN_traffic_calming_infra,25,Type B,4,Export attribute rules to CSV,"Export Attribute Rules → C:\GIS\AttributeRules\TRN_traffic_calming_infra_rules_export_20260515.csv","ArcGIS Pro (Export Attribute Rules)",1–2 min,,
+TRN_traffic_calming_infra,25,Type B,5,Delete attribute rules,"Delete Attribute Rules; confirm no rules remain","ArcGIS Pro (Delete Attribute Rules)",1–2 min,,
+TRN_traffic_calming_infra,25,Type B,6,Run field calculation — set ASSETID = primary ID field,"UpdateCursor with where_clause=""ASSETID IS NULL OR ASSETID = ''""; set ASSETID = primary ID field value",ArcPy UpdateCursor,< 1 min,,25 records
+TRN_traffic_calming_infra,25,Type B,7a,Edit Arcade expression in exported CSV,Update ASSETID rule to copy from primary ID field; confirm approach with team,Text editor,15–20 min,,Human analysis step
+TRN_traffic_calming_infra,25,Type B,7b,Import updated attribute rules,"Import Attribute Rules → updated CSV; verify rules active","ArcGIS Pro (Import Attribute Rules)",5 min,,
+TRN_traffic_calming_infra,25,Type B,7c,Test insert in child version,"Insert test feature; confirm ASSETID = primary ID on insert; discard without posting",ArcGIS Pro (versioned edit),5–10 min,,
+TRN_traffic_calming_infra,25,Type B,8,Re-enable editor tracking,Enable via ArcGIS Pro Properties or EnableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+TRN_traffic_calming_infra,25,Type B,9,Restart associated services,"Start: AGS Geotab View, AGS Traffic Zone WGS84; confirm Started",ArcGIS Server Manager,2 min,,Note time restarted
+TRN_traffic_calming_infra,25,Type B,10a,Re-run count query — confirm 0 NULLs,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[TRN_traffic_calming_infra] WHERE ASSETID IS NULL OR ASSETID = ''; must return 0",SQL Server,2 min,,
+TRN_traffic_calming_infra,25,Type B,10b,Spot-check records,Compare ASSETID vs primary ID field for 5–10 records,ArcGIS Pro / SQL Server,3–5 min,,
+TRN_traffic_calming_infra,25,Type B,10c,Check for duplicate ASSETIDs,"SELECT ASSETID, COUNT(*) FROM [GISRW01].[sdeadm].[TRN_traffic_calming_infra] GROUP BY ASSETID HAVING COUNT(*) > 1",SQL Server,2 min,,
+TRN_traffic_calming_infra,25,Type B,10d,Update ticket to Complete,"Record: date/time, 25 records updated, backup copy name, any deviations",ServiceNow / ticketing system,2–3 min,,Ticket: TASK0316399 (parent) / TASK0319535 (related)
+LND_hrm_parcel,3,Type A,PRE-1,Confirm primary ID field name,Identify the primary ID field; check attribute rules or schema,ArcGIS Pro / SQL Server,5 min,,
+LND_hrm_parcel,3,Type A,PRE-2,Run pre-work NULL count query,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[LND_hrm_parcel] WHERE ASSETID IS NULL OR ASSETID = ''; confirm count matches expected (3)",SQL Server,5 min,,
+LND_hrm_parcel,3,Type A,PRE-3,Confirm maintenance window with stakeholders,"Notify stakeholders — affected services: DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84",Email / Teams,5 min,,
+LND_hrm_parcel,3,Type A,1,Create backup copy,"Copy Features → [GISRW01].[sdeadm].[LND_hrm_parcel_BACKUP_20260515]; confirm row count","ArcGIS Pro (Copy Features tool)",2–3 min,,
+LND_hrm_parcel,3,Type A,2,Stop associated services,"Stop: DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84; confirm Stopped",ArcGIS Server Manager,2 min,,Note time stopped
+LND_hrm_parcel,3,Type A,3,Disable editor tracking,Disable via ArcGIS Pro Properties or DisableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+LND_hrm_parcel,3,Type A,4,Export attribute rules to CSV,"Export Attribute Rules → C:\GIS\AttributeRules\LND_hrm_parcel_rules_export_20260515.csv; review","ArcGIS Pro (Export Attribute Rules)",1–2 min,,
+LND_hrm_parcel,3,Type A,5,Delete attribute rules,"Delete Attribute Rules; confirm no rules remain","ArcGIS Pro (Delete Attribute Rules)",1–2 min,,
+LND_hrm_parcel,3,Type A,6,Run field calculation — set ASSETID = primary ID field,"UpdateCursor with where_clause=""ASSETID IS NULL OR ASSETID = ''""; set ASSETID = primary ID field value",ArcPy UpdateCursor,< 1 min,,3 records
+LND_hrm_parcel,3,Type A,7,Import attribute rules (no changes needed),"Import Attribute Rules → use exported CSV from Step 4 as-is; verify rules active","ArcGIS Pro (Import Attribute Rules)",5 min,,
+LND_hrm_parcel,3,Type A,8,Re-enable editor tracking,Enable via ArcGIS Pro Properties or EnableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+LND_hrm_parcel,3,Type A,9,Restart associated services,"Start: DDE, HRMBaseData, CityworksMap, AGS Property WGS84, AGS GovProperty WGS84; confirm Started",ArcGIS Server Manager,2 min,,Note time restarted
+LND_hrm_parcel,3,Type A,10a,Re-run count query — confirm 0 NULLs,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[LND_hrm_parcel] WHERE ASSETID IS NULL OR ASSETID = ''; must return 0",SQL Server,2 min,,
+LND_hrm_parcel,3,Type A,10b,Spot-check records,Compare ASSETID vs primary ID field for all 3 records,ArcGIS Pro / SQL Server,2 min,,
+LND_hrm_parcel,3,Type A,10c,Check for duplicate ASSETIDs,"SELECT ASSETID, COUNT(*) FROM [GISRW01].[sdeadm].[LND_hrm_parcel] GROUP BY ASSETID HAVING COUNT(*) > 1",SQL Server,2 min,,
+LND_hrm_parcel,3,Type A,10d,Update ticket to Complete,"Record: date/time, 3 records updated, backup copy name, any deviations",ServiceNow / ticketing system,2–3 min,,Ticket: TASK0316399 (parent)
+AST_parking_pay_station,2,Type B,PRE-1,Confirm primary ID field name,Identify the primary ID field; check attribute rules or schema,ArcGIS Pro / SQL Server,5 min,,
+AST_parking_pay_station,2,Type B,PRE-2,Run pre-work NULL count query,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[AST_parking_pay_station] WHERE ASSETID IS NULL OR ASSETID = ''; confirm count matches expected (2)",SQL Server,5 min,,
+AST_parking_pay_station,2,Type B,PRE-3,Confirm maintenance window with stakeholders,"Notify stakeholders — affected services: Cityworks Assets, Cityworks Map, DDE, HRMBaseData",Email / Teams,5 min,,
+AST_parking_pay_station,2,Type B,1,Create backup copy,"Copy Features → [GISRW01].[sdeadm].[AST_parking_pay_station_BACKUP_20260515]; confirm row count","ArcGIS Pro (Copy Features tool)",2–3 min,,
+AST_parking_pay_station,2,Type B,2,Stop associated services,"Stop: Cityworks Assets, Cityworks Map, DDE, HRMBaseData; confirm Stopped",ArcGIS Server Manager,2 min,,Note time stopped
+AST_parking_pay_station,2,Type B,3,Disable editor tracking,Disable via ArcGIS Pro Properties or DisableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+AST_parking_pay_station,2,Type B,4,Export attribute rules to CSV,"Export Attribute Rules → C:\GIS\AttributeRules\AST_parking_pay_station_rules_export_20260515.csv","ArcGIS Pro (Export Attribute Rules)",1–2 min,,
+AST_parking_pay_station,2,Type B,5,Delete attribute rules,"Delete Attribute Rules; confirm no rules remain","ArcGIS Pro (Delete Attribute Rules)",1–2 min,,
+AST_parking_pay_station,2,Type B,6,Run field calculation — set ASSETID = primary ID field,"UpdateCursor with where_clause=""ASSETID IS NULL OR ASSETID = ''""; set ASSETID = primary ID field value",ArcPy UpdateCursor,< 1 min,,2 records
+AST_parking_pay_station,2,Type B,7a,Edit Arcade expression in exported CSV,Update ASSETID rule to copy from primary ID field; confirm approach with team,Text editor,15–20 min,,Human analysis step
+AST_parking_pay_station,2,Type B,7b,Import updated attribute rules,"Import Attribute Rules → updated CSV; verify rules active","ArcGIS Pro (Import Attribute Rules)",5 min,,
+AST_parking_pay_station,2,Type B,7c,Test insert in child version,"Insert test feature; confirm ASSETID = primary ID on insert; discard without posting",ArcGIS Pro (versioned edit),5–10 min,,
+AST_parking_pay_station,2,Type B,8,Re-enable editor tracking,Enable via ArcGIS Pro Properties or EnableEditorTracking_management,ArcGIS Pro / ArcPy,1–2 min,,
+AST_parking_pay_station,2,Type B,9,Restart associated services,"Start: Cityworks Assets, Cityworks Map, DDE, HRMBaseData; confirm Started",ArcGIS Server Manager,2 min,,Note time restarted
+AST_parking_pay_station,2,Type B,10a,Re-run count query — confirm 0 NULLs,"SELECT COUNT(*) FROM [GISRW01].[sdeadm].[AST_parking_pay_station] WHERE ASSETID IS NULL OR ASSETID = ''; must return 0",SQL Server,2 min,,
+AST_parking_pay_station,2,Type B,10b,Spot-check records,Compare ASSETID vs primary ID field for both records,ArcGIS Pro / SQL Server,2 min,,
+AST_parking_pay_station,2,Type B,10c,Check for duplicate ASSETIDs,"SELECT ASSETID, COUNT(*) FROM [GISRW01].[sdeadm].[AST_parking_pay_station] GROUP BY ASSETID HAVING COUNT(*) > 1",SQL Server,2 min,,
+AST_parking_pay_station,2,Type B,10d,Update ticket to Complete,"Record: date/time, 2 records updated, backup copy name, any deviations",ServiceNow / ticketing system,2–3 min,,Ticket: TASK0316399 (parent)
+Streets,TBD,TBD,INV-1,Investigate missing ASSETID count,"Run: SELECT COUNT(*) FROM [GISRW01].[sdeadm].[Streets] WHERE ASSETID IS NULL OR ASSETID = ''; record count",SQL Server,10 min,,See TASK0320812 for details; must be completed before scheduling remediation
+Streets,TBD,TBD,INV-2,Confirm rule type (A or B),"Check existing attribute rules: does ASSETID use the same sequence as the primary ID field (Type A) or a different one (Type B)? Export rules CSV to review",ArcGIS Pro / SQL Server,15 min,,
+Streets,TBD,TBD,INV-3,Identify primary ID field name,Confirm which field ASSETID should mirror,ArcGIS Pro / SQL Server,5 min,,
+Streets,TBD,TBD,INV-4,Identify associated services,List all AGS/Cityworks services referencing this feature class,ArcGIS Server Manager,10 min,,
+Streets,TBD,TBD,INV-5,Document findings and update MISSING_ASSETID_WORKFLOW.md,Add record count / rule type / services to the feature class table before scheduling work,Text editor,10 min,,
+AST_tree_vaults,TBD,TBD,INV-1,Investigate missing ASSETID count,"Run: SELECT COUNT(*) FROM [GISRW01].[sdeadm].[AST_tree_vaults] WHERE ASSETID IS NULL OR ASSETID = ''; record count",SQL Server,10 min,,See TASK0319535; must be completed before scheduling remediation
+AST_tree_vaults,TBD,TBD,INV-2,Confirm rule type (A or B),"Check existing attribute rules: same sequence (Type A) or separate sequences (Type B)?",ArcGIS Pro / SQL Server,15 min,,
+AST_tree_vaults,TBD,TBD,INV-3,Identify primary ID field name,Confirm which field ASSETID should mirror,ArcGIS Pro / SQL Server,5 min,,
+AST_tree_vaults,TBD,TBD,INV-4,Identify associated services,List all AGS/Cityworks services referencing this feature class,ArcGIS Server Manager,10 min,,
+AST_tree_vaults,TBD,TBD,INV-5,Document findings and update MISSING_ASSETID_WORKFLOW.md,Add record count / rule type / services to the feature class table before scheduling work,Text editor,10 min,,
+LND_outdoor_req_equip_point,TBD,TBD,INV-1,Investigate missing ASSETID count,"Run: SELECT COUNT(*) FROM [GISRW01].[sdeadm].[LND_outdoor_req_equip_point] WHERE ASSETID IS NULL OR ASSETID = ''; record count",SQL Server,10 min,,See TASK0319535
+LND_outdoor_req_equip_point,TBD,TBD,INV-2,Confirm rule type (A or B),"Check existing attribute rules: same sequence (Type A) or separate sequences (Type B)?",ArcGIS Pro / SQL Server,15 min,,
+LND_outdoor_req_equip_point,TBD,TBD,INV-3,Identify primary ID field name,Confirm which field ASSETID should mirror,ArcGIS Pro / SQL Server,5 min,,
+LND_outdoor_req_equip_point,TBD,TBD,INV-4,Identify associated services,List all AGS/Cityworks services referencing this feature class,ArcGIS Server Manager,10 min,,
+LND_outdoor_req_equip_point,TBD,TBD,INV-5,Document findings and update MISSING_ASSETID_WORKFLOW.md,Add record count / rule type / services to the feature class table before scheduling work,Text editor,10 min,,
+TRN_bus_pad,TBD,TBD,INV-1,Investigate missing ASSETID count,"Run: SELECT COUNT(*) FROM [GISRW01].[sdeadm].[TRN_bus_pad] WHERE ASSETID IS NULL OR ASSETID = ''; record count",SQL Server,10 min,,See TASK0319535; Bus Pads confirmed affected by same delete+insert issue as TRN_sectrav — check TROUBLESHOOTING.md Section 11
+TRN_bus_pad,TBD,TBD,INV-2,Confirm rule type (A or B),"Check existing attribute rules; note Bus Pads use a separate sequence from sectravid","ArcGIS Pro / SQL Server",15 min,,Confirmed: Bus Pads use a separate sequence (see TROUBLESHOOTING.md Q7)
+TRN_bus_pad,TBD,TBD,INV-3,Identify primary ID field name,Confirm which field ASSETID should mirror,ArcGIS Pro / SQL Server,5 min,,
+TRN_bus_pad,TBD,TBD,INV-4,Identify associated services,List all AGS/Cityworks services referencing this feature class,ArcGIS Server Manager,10 min,,
+TRN_bus_pad,TBD,TBD,INV-5,Document findings and update MISSING_ASSETID_WORKFLOW.md,Add record count / rule type / services to the feature class table before scheduling work,Text editor,10 min,,
+BLD_electrical,TBD,TBD,INV-1,Investigate missing ASSETID count,"Run: SELECT COUNT(*) FROM [GISRW01].[sdeadm].[BLD_electrical] WHERE ASSETID IS NULL OR ASSETID = ''; record count",SQL Server,10 min,,See TASK0319535
+BLD_electrical,TBD,TBD,INV-2,Confirm rule type (A or B),"Check existing attribute rules: same sequence (Type A) or separate sequences (Type B)?",ArcGIS Pro / SQL Server,15 min,,
+BLD_electrical,TBD,TBD,INV-3,Identify primary ID field name,Confirm which field ASSETID should mirror,ArcGIS Pro / SQL Server,5 min,,
+BLD_electrical,TBD,TBD,INV-4,Identify associated services,List all AGS/Cityworks services referencing this feature class,ArcGIS Server Manager,10 min,,
+BLD_electrical,TBD,TBD,INV-5,Document findings and update MISSING_ASSETID_WORKFLOW.md,Add record count / rule type / services to the feature class table before scheduling work,Text editor,10 min,,
+BLD_exterior,TBD,TBD,INV-1,Investigate missing ASSETID count,"Run: SELECT COUNT(*) FROM [GISRW01].[sdeadm].[BLD_exterior] WHERE ASSETID IS NULL OR ASSETID = ''; record count",SQL Server,10 min,,See TASK0319535
+BLD_exterior,TBD,TBD,INV-2,Confirm rule type (A or B),"Check existing attribute rules: same sequence (Type A) or separate sequences (Type B)?",ArcGIS Pro / SQL Server,15 min,,
+BLD_exterior,TBD,TBD,INV-3,Identify primary ID field name,Confirm which field ASSETID should mirror,ArcGIS Pro / SQL Server,5 min,,
+BLD_exterior,TBD,TBD,INV-4,Identify associated services,List all AGS/Cityworks services referencing this feature class,ArcGIS Server Manager,10 min,,
+BLD_exterior,TBD,TBD,INV-5,Document findings and update MISSING_ASSETID_WORKFLOW.md,Add record count / rule type / services to the feature class table before scheduling work,Text editor,10 min,,
+BLD_mechanical,TBD,TBD,INV-1,Investigate missing ASSETID count,"Run: SELECT COUNT(*) FROM [GISRW01].[sdeadm].[BLD_mechanical] WHERE ASSETID IS NULL OR ASSETID = ''; record count",SQL Server,10 min,,See TASK0319535
+BLD_mechanical,TBD,TBD,INV-2,Confirm rule type (A or B),"Check existing attribute rules: same sequence (Type A) or separate sequences (Type B)?",ArcGIS Pro / SQL Server,15 min,,
+BLD_mechanical,TBD,TBD,INV-3,Identify primary ID field name,Confirm which field ASSETID should mirror,ArcGIS Pro / SQL Server,5 min,,
+BLD_mechanical,TBD,TBD,INV-4,Identify associated services,List all AGS/Cityworks services referencing this feature class,ArcGIS Server Manager,10 min,,
+BLD_mechanical,TBD,TBD,INV-5,Document findings and update MISSING_ASSETID_WORKFLOW.md,Add record count / rule type / services to the feature class table before scheduling work,Text editor,10 min,,
