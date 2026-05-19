@@ -483,54 +483,30 @@ For any ASSETIDs determined to be intentional deletions (not restored), prepare 
 
 ## 7. Impact of Performing This During Working Hours
 
-The procedure requires stopping all services listed in Step 2 for the full duration of the maintenance window (3.5-4 hours minimum). The following are the explicit reasons why this must not be done during business hours.
+All services listed in Step 2 must be stopped for the full duration of the window (3.5-4 hours minimum). The reasons this should not happen during business hours are:
 
-### Reasons to Perform Outside Business Hours
+1. **CityWorks is unavailable to field crews.** Field crews cannot view, create, update, or close work orders against any of the affected asset types for the duration of the window.
+2. **HRMBaseData backs the Asset Registry editing application.** HRMBaseData provides the contextual read-only data layer for the Asset Registry, a widely used editing application across the organization. Stopping it during business hours disrupts any staff actively using the Asset Registry.
+3. **DDE exports would be affected.** DDE is used for data exports. Any export run during the window would either fail or produce output against a service that is unavailable.
+4. **WinterMaintenance route data becomes unavailable.** During active winter operations (November-March), stopping the WinterMaintenance service mid-shift is not acceptable. Even outside peak season, a daytime outage is disruptive to planning.
+5. **Shared All and traffic services affect inter-departmental users.** AST_SIGN (via Shared All) and traffic calming data (via AGS Geotab View, AGS Traffic Zone WGS84, TrafficCalming) are used by staff across multiple teams during the work day.
+6. **A 5-hour window needs room to extend.** If rollback is needed the window must be able to run long. Starting during business hours removes that option.
+7. **Concurrent editing risks conflicts.** Staff actively editing affected feature classes during the window could conflict with the Append operations or complicate validation.
 
-**1. CityWorks field crews cannot access work orders.**
-CityWorks is the primary asset management system for field operations. Stopping the CityWorks integration service and CityworksMap means field crews cannot view, create, update, or close work orders against any of the affected asset types (transit shelters, trail segments, signs, traffic calming infrastructure, parcels). During business hours this directly interrupts active field operations.
+| Downstream System | Impact During Window |
+|---|---|
+| CityWorks | Work orders against affected asset types inaccessible |
+| HRMBaseData / Asset Registry | Organization-wide editing application unavailable |
+| DDE | Exports against affected data unavailable |
+| WinterMaintenance | TRN_sectrav route segments unavailable (critical Nov-Mar) |
+| Shared All | AST_SIGN layer unavailable to inter-departmental viewers |
+| AGS Geotab View / Traffic Zone / TrafficCalming | Traffic calming data unavailable to traffic engineering and fleet |
 
-**2. HRMBaseData is a widely shared dependency.**
-HRMBaseData is not just used by the affected layers - it underpins many map viewers and applications across the organization. Stopping it during business hours causes a broad, visible outage that extends well beyond the teams involved in this work. Any application that references HRMBaseData as a base layer will lose map content for the duration of the window.
+**Preferred window: Saturday or Sunday, 6:00-7:00 AM start.**
 
-**3. DDE feeds are interrupted and downstream systems receive stale data.**
-The DDE feed service syncs LND_hrm_parcel data to downstream consumers. Stopping it mid-business-day breaks the feed for however long the window runs. Downstream consumers that poll on a schedule during business hours will either fail or consume a previous cycle's data, with no indication that the data is stale.
+**Weeknight fallback (after 6:00 PM):** Acceptable if a weekend is not available, but a 5-hour window ending at midnight leaves little room if rollback is needed.
 
-**4. Transit operations lose live shelter data.**
-The RoadOperation/Transit Shelter service supports Transit operations staff who need live shelter location and condition data during their operating hours. Stopping this service during business hours removes that visibility for the duration of the window.
-
-**5. WinterMaintenance route data becomes unavailable.**
-TRN_sectrav is the backbone of WinterMaintenance routing. During active winter operations (November-March), stopping the WinterMaintenance service during a shift is operationally unacceptable - it removes route segment data from operators in the field. Even outside peak winter season, a daytime outage is disruptive to planning and dispatch.
-
-**6. Shared All affects inter-departmental and potentially public-facing services.**
-AST_SIGN data is consumed by the Shared All service. Stopping it during business hours removes AST_SIGN layer access for any inter-departmental or public-facing viewers that depend on it.
-
-**7. Traffic engineering and fleet management lose access to traffic calming and zone data.**
-AGS Geotab View, AGS Traffic Zone WGS84, and the TrafficCalming service are used by traffic engineering and fleet management teams during the work day. Stopping them removes visibility into traffic calming infrastructure and zone boundaries for the duration of the window.
-
-**8. The window must be long enough to allow for rollback.**
-The recommended window is 5 hours to accommodate a potential rollback. Starting a 5-hour window during business hours would push the end time deep into active operating hours and leave no option to extend without further disruption. Outside business hours there is more room to absorb unexpected delays.
-
-**9. Concurrent editing increases the risk of conflicts and data integrity issues.**
-If staff are actively editing any of the affected feature classes during the window - for example, a GIS editor making routine updates in ArcGIS Pro - their edits could conflict with the Append operations or complicate the validation results. Performing the work outside business hours eliminates this risk.
-
-### Summary
-
-| Downstream System | Affected User Groups | Impact During Window |
-|---|---|---|
-| CityWorks | Field crews, work order admins, inspectors | Work orders linked to transit shelters, sectrav segments, signs cannot be accessed or actioned |
-| RoadOperation / Transit Shelter | Transit operations | No live shelter location/condition data |
-| WinterMaintenance | Winter operations staff | TRN_sectrav-based route segments unavailable (critical Nov-Mar) |
-| DDE | Downstream property/parcel consumers | LND_hrm_parcel feed interrupted; downstream systems see stale parcel data |
-| Shared All | Inter-departmental / public-facing viewers | AST_SIGN layer unavailable |
-| HRMBaseData | Any map viewer referencing this service | Broad base layer outage affecting many teams |
-| AGS Geotab View / Traffic Zone / TrafficCalming | Traffic engineering, fleet management | Traffic calming infrastructure and zone data unavailable |
-
-**Preferred window: Saturday or Sunday, 6:00-7:00 AM start.** CityWorks field crew activity is minimal on weekends. DDE feeds resync naturally after services restart. Enough lead time exists before normal Monday operations resume if the window runs long.
-
-**Weeknight fallback (after 6:00 PM):** Acceptable if a weekend is not available. A 5-hour window starting at 7:00 PM ends at midnight; tight if rollback is needed but workable.
-
-**WinterMaintenance note:** If a storm event is forecast within 48 hours of the scheduled window, defer - TRN_sectrav downtime during active winter operations is operationally significant.
+**WinterMaintenance note:** If a storm event is forecast within 48 hours of the window, defer.
 
 ---
 
