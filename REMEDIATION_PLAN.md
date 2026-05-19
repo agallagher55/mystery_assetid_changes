@@ -27,7 +27,7 @@ The correct response depends on which case applies. For each missing ASSETID: if
 |---|---|
 | CityWorks | Work orders and inspection records reference an ASSETID that resolves to nothing in GIS - no location, no asset attributes, no geometry |
 | DDE | Feed records for parcels or other assets fail to join to GIS, producing null-attribute outputs in downstream consumers |
-| Mobile apps (ParksRec, RoadOperation) | Map queries against orphaned IDs return no results; field crews cannot locate assets |
+| Mobile apps (RoadOperation) | Map queries against orphaned IDs return no results; field crews cannot locate assets |
 
 ---
 
@@ -39,7 +39,7 @@ AST_tree and AST_parking_pay_station have been resolved. The remaining layers:
 |---|---|---|---|
 | TRN_transit_shelter | 512 | Yes | CityWorks, RoadOperation/Transit Shelter |
 | TRN_sectrav | 201 | Yes | CityWorks Assets, CityWorks Map, HRMBaseData, WinterMaintenance |
-| AST_SIGN | 33 | Yes | CityWorks Assets, HRMBaseData, Shared All, ParksRec Mobile |
+| AST_SIGN | 33 | Yes | CityWorks Assets, HRMBaseData, Shared All |
 | TRN_traffic_calming_infra | 25 | Yes | AGS Geotab View, AGS Traffic Zone WGS84, TrafficCalming |
 | LND_hrm_parcel | 3 | Yes | DDE, HRMBaseData, CityworksMap, AGS Property/GovProperty WGS84 |
 
@@ -162,7 +162,7 @@ No mismatch IDs were found in the earlier review. These are purely features no l
 - [ ] ArcPy restore scripts tested on staging
 - [ ] Full geodatabase backup confirmed within the last 24 hours
 - [ ] Per-layer pre-window row count recorded
-- [ ] All downstream system owners notified (CityWorks admin, DDE team, Transit, Winter Ops, ParksRec Mobile admin)
+- [ ] All downstream system owners notified (CityWorks admin, DDE team, Transit, Winter Ops)
 - [ ] Retire list prepared for any ASSETIDs that will not be restored (for CityWorks admin to action post-window)
 - [ ] Two GIS staff online (one executing, one reviewing)
 
@@ -201,7 +201,7 @@ for layer in layers:
 | DDE feed service | LND_hrm_parcel |
 | AGS Geotab View / AGS Traffic Zone WGS84 | TRN_traffic_calming_infra |
 | TrafficCalming service | TRN_traffic_calming_infra |
-| Shared All / ParksRec Mobile | AST_SIGN |
+| Shared All | AST_SIGN |
 | AGS Property WGS84 / AGS GovProperty WGS84 | LND_hrm_parcel |
 | CityworksMap | LND_hrm_parcel |
 
@@ -414,7 +414,7 @@ Start in dependency order:
 5. TrafficCalming service
 6. RoadOperation / Transit Shelter service
 7. WinterMaintenance service
-8. Shared All / ParksRec Mobile
+8. Shared All
 9. CityworksMap
 10. CityWorks integration service (last)
 
@@ -425,7 +425,7 @@ Start in dependency order:
 - **CityWorks:** Query a sample of restored ASSETIDs from each layer. Confirm they resolve to GIS features with geometry and attributes. Attempt to open an existing work order linked to one restored ASSETID.
 - **DDE:** Trigger a manual sync or check the feed log. Confirm LND_hrm_parcel records flow through without null-join errors.
 - **WinterMaintenance:** Confirm restored TRN_sectrav segments appear in the maintenance layer.
-- **ParksRec Mobile / Shared All:** Confirm restored AST_SIGN features are visible and queryable.
+- **Shared All:** Confirm restored AST_SIGN features are visible and queryable.
 - **ArcGIS Pro spot check:** For each restored layer, run Select By Attributes with `ASSETID IN (restored list)` and confirm all features are found.
 
 ---
@@ -502,8 +502,8 @@ The RoadOperation/Transit Shelter service supports Transit operations staff who 
 **5. WinterMaintenance route data becomes unavailable.**
 TRN_sectrav is the backbone of WinterMaintenance routing. During active winter operations (November-March), stopping the WinterMaintenance service during a shift is operationally unacceptable - it removes route segment data from operators in the field. Even outside peak winter season, a daytime outage is disruptive to planning and dispatch.
 
-**6. ParksRec Mobile and Shared All affect field staff and potentially public-facing services.**
-AST_SIGN data is consumed by ParksRec Mobile and the Shared All service. Stopping these during business hours affects Parks and Recreation field staff who rely on them throughout the workday. Shared All may also support public-facing or inter-departmental viewers.
+**6. Shared All affects inter-departmental and potentially public-facing services.**
+AST_SIGN data is consumed by the Shared All service. Stopping it during business hours removes AST_SIGN layer access for any inter-departmental or public-facing viewers that depend on it.
 
 **7. Traffic engineering and fleet management lose access to traffic calming and zone data.**
 AGS Geotab View, AGS Traffic Zone WGS84, and the TrafficCalming service are used by traffic engineering and fleet management teams during the work day. Stopping them removes visibility into traffic calming infrastructure and zone boundaries for the duration of the window.
@@ -522,7 +522,7 @@ If staff are actively editing any of the affected feature classes during the win
 | RoadOperation / Transit Shelter | Transit operations | No live shelter location/condition data |
 | WinterMaintenance | Winter operations staff | TRN_sectrav-based route segments unavailable (critical Nov-Mar) |
 | DDE | Downstream property/parcel consumers | LND_hrm_parcel feed interrupted; downstream systems see stale parcel data |
-| ParksRec Mobile / Shared All | Parks and Rec field staff | AST_SIGN layer unavailable |
+| Shared All | Inter-departmental / public-facing viewers | AST_SIGN layer unavailable |
 | HRMBaseData | Any map viewer referencing this service | Broad base layer outage affecting many teams |
 | AGS Geotab View / Traffic Zone / TrafficCalming | Traffic engineering, fleet management | Traffic calming infrastructure and zone data unavailable |
 
@@ -582,7 +582,7 @@ If the retire list is not handed off before field crews start their day, users m
 | HIGH | Confirm historical version dates predate deletion events for each layer | GIS Admin |
 | HIGH | Coordinate with Transit team on decommissioned shelters (TRN_transit_shelter) | GIS Lead |
 | HIGH | Test ArcPy Append restore scripts on staging geodatabase | GIS Admin |
-| MEDIUM | Notify CityWorks admin, DDE admin, Transit Ops, Winter Ops, ParksRec | GIS Lead |
+| MEDIUM | Notify CityWorks admin, DDE admin, Transit Ops, Winter Ops | GIS Lead |
 | MEDIUM | Book weekend maintenance window with IT/GIS ops (5 hours) | GIS Lead |
 | MEDIUM | Prepare retire list template for CityWorks and DDE hand-off | GIS Analyst |
 | LOW | Document editor tracking field names per layer (needed for Step 8) | GIS Analyst |
